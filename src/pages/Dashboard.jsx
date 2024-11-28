@@ -1,78 +1,11 @@
-import React, { useEffect } from "react";
-import { useDispatch, useSelector } from "react-redux";
+import React from "react";
 import { useNavigate } from "react-router-dom";
-import { fetchCurrentUser } from "../features/user/userSlice"; // Import fetchCurrentUser action
-import { logoutUser } from "../features/auth/authSlice"; // Import logout action
+
 
 const Dashboard = () => {
   const navigate = useNavigate();
-  const dispatch = useDispatch();
-
-  // Access data from Redux Store
-  const { userInfo, loading, error } = useSelector((state) => state.user);
-  const { isAuthenticated } = useSelector((state) => state.auth);
-
-  // Fetch user information on component render
-  useEffect(() => {
-    if (!isAuthenticated) {
-      navigate("/login"); // Redirect to login if not authenticated
-    } else {
-      dispatch(fetchCurrentUser()); // Fetch user data
-    }
-  }, [isAuthenticated, dispatch, navigate]);
-
-  // Handle logout
-  const handleLogout = async () => {
-    try {
-        await dispatch(logoutUser()).unwrap(); // Dispatch logout thunk
-        navigate('/login'); // Redirect to login page
-    } catch (error) {
-        console.error('Logout failed:', error);
-    }
-};
-
   return (
     <div className="min-h-screen flex flex-col bg-gray-100">
-      {/* Top Navigation Bar */}
-      <header className="w-full bg-white shadow-md flex items-center justify-between px-6 py-4">
-        <div className="text-2xl font-bold text-pink-600">EliteLusso</div>
-
-        {/* Navigation Links */}
-        <nav className="flex space-x-8">
-          <button className="text-gray-700 hover:text-pink-600 font-medium">Discover</button>
-          <button className="text-gray-700 hover:text-pink-600 font-medium">Messages</button>
-          <button className="text-gray-700 hover:text-pink-600 font-medium">Activities</button>
-          <button className="text-gray-700 hover:text-pink-600 font-medium">Search</button>
-        </nav>
-
-        {/* User Avatar and Info */}
-        <div className="flex items-center space-x-4">
-          {loading ? (
-            <p className="text-sm text-gray-500">Loading...</p>
-          ) : error ? (
-            <p className="text-sm text-red-500">Error: {error}</p>
-          ) : (
-            <>
-              <img
-                src={userInfo?.profile?.avatar || "https://via.placeholder.com/150"}
-                alt="User Avatar"
-                className="w-12 h-12 rounded-full border-2 border-pink-600"
-              />
-              <div>
-                <p className="text-sm font-semibold text-gray-800">{userInfo?.username || "Guest"}</p>
-                <p className="text-xs text-gray-500">{userInfo?.account_type || "Basic Member"}</p>
-              </div>
-              <button
-                onClick={handleLogout}
-                className="text-sm text-pink-600 hover:underline ml-4"
-              >
-                Logout
-              </button>
-            </>
-          )}
-        </div>
-      </header>
-
       {/* Main Content */}
       <div className="flex flex-1">
         {/* Main Content Area */}

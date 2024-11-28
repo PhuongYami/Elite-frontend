@@ -9,6 +9,7 @@ export const fetchCurrentUser = createAsyncThunk(
         try
         {
             const response = await userApi.getCurrentUser();
+            console.log('API response:', response.data);
             return response.data; // Return the user data from API
         } catch (error)
         {
