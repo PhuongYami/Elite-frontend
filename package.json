@@ -29,9 +29,11 @@
     "react-router-dom": "^7.0.1",
     "react-scripts": "5.0.1",
     "react-select": "^5.8.3",
+    "react-spotify-web-playback": "^0.14.6",
     "react-swipeable": "^7.0.2",
     "react-toastify": "^10.0.6",
     "socket.io-client": "^4.8.1",
+    "spotify-web-api-js": "^1.5.2",
     "web-vitals": "^2.1.4",
     "yup": "^1.4.0"
   },

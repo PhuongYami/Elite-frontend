@@ -27,7 +27,14 @@ const Profile = () => {
         <div className="min-h-screen bg-gradient-to-r from-pink-100 via-white to-pink-200 flex flex-col items-center">
             {/* Header */}
             <header className="w-full bg-white shadow-md flex items-center justify-between px-6 py-4">
-                <div className="text-3xl font-extrabold text-pink-600">EliteLusso</div>
+                <div className="text-3xl font-extrabold text-pink-600">
+                    <div
+                        className="mt-4 bg-white-600 text-pink px-6 py-2 rounded-md hover:bg-pink-100 shadow"
+                        onClick={() => navigate("/dashboard")}
+                    >
+                        EliteLusso
+                    </div>
+                </div>
                 <div className="flex items-center space-x-4">
                     <img
                         src={user.avatar} // Avatar từ dữ liệu
@@ -109,13 +116,14 @@ const Profile = () => {
                                 <h3 className="text-gray-800 font-semibold text-md">{favoriteSong.name}</h3>
                                 <p className="text-gray-500 text-sm">{favoriteSong.artist}</p>
                             </div>
-                            {/* Trình phát nhạc */}
+                            {/* Biểu tượng phát nhạc */}
                             <ReactPlayer
                                 url={favoriteSong.url}
                                 playing={false}
                                 controls={true}
-                                width="100%"
+                                width="50px"
                                 height="50px"
+                                style={{ borderRadius: "50%" }}
                             />
                         </div>
                     ) : (

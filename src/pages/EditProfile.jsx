@@ -12,13 +12,13 @@ const EditProfile = () => {
     const [showPicker, setShowPicker] = useState(false);
 
     // Danh sách các tùy chọn
-    const musicOptions = [
-        { value: "shape-of-you", label: "Shape of You - Ed Sheeran" },
-        { value: "blinding-lights", label: "Blinding Lights - The Weeknd" },
-        { value: "someone-like-you", label: "Someone Like You - Adele" },
-        { value: "bohemian-rhapsody", label: "Bohemian Rhapsody - Queen" },
-        { value: "havana", label: "Havana - Camila Cabello" },
-    ];
+    // const musicOptions = [
+    //     { value: "shape-of-you", label: "Shape of You - Ed Sheeran" },
+    //     { value: "blinding-lights", label: "Blinding Lights - The Weeknd" },
+    //     { value: "someone-like-you", label: "Someone Like You - Adele" },
+    //     { value: "bohemian-rhapsody", label: "Bohemian Rhapsody - Queen" },
+    //     { value: "havana", label: "Havana - Camila Cabello" },
+    // ];
 
     const companyOptions = [
         { value: "fpt", label: "FPT Corporation" },
@@ -56,6 +56,16 @@ const EditProfile = () => {
     // Xử lý thay đổi Select
     const handleSelectChange = (name, option) => {
         setFormData({ ...formData, [name]: option });
+    };
+    // Xử lý thay đổi Spotify URI
+    const handleSpotifyChange = (e) => {
+        setFormData({
+            ...formData,
+            favoriteSong: {
+                ...formData.favoriteSong,
+                spotifyURI: e.target.value,
+            },
+        });
     };
 
     // Xử lý chọn Emoji
@@ -220,15 +230,17 @@ const EditProfile = () => {
                         />
                     </div>
 
-                    {/* Favorite Music */}
+                    {/* Spotify URI */}
                     <div>
-                        <label className="block text-sm font-medium text-gray-700">Favorite Music</label>
-                        <Select
-                            options={musicOptions}
-                            value={formData.favoriteSong}
-                            onChange={(option) => handleSelectChange("favoriteSong", option)}
-                            className="mt-1"
+                        <label className="block text-sm font-medium text-gray-700">Spotify URI</label>
+                        <input
+                            type="text"
+                            value={formData.favoriteSong?.spotifyURI || ""}
+                            onChange={handleSpotifyChange}
+                            placeholder="spotify:track:6rqhFgbbKwnb9MLmUQDhG6"
+                            className="mt-1 w-full px-4 py-2 border rounded-md"
                         />
+                        <small className="text-gray-500">Paste the Spotify URI of your favorite song</small>
                     </div>
 
                     {/* Bio */}

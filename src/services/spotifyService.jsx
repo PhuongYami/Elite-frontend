@@ -1,48 +1,24 @@
 import axios from "axios";
 
-const SPOTIFY_TOKEN_URL = "https://accounts.spotify.com/api/token";
-const SPOTIFY_SEARCH_URL = "https://api.spotify.com/v1/search";
+// Hàm lấy Access Token từ Spotify API
+export const fetchSpotifyToken = async () => {
+    const clientId = "2593a4ba773c426fb74940c3a60768a0"; // Thay bằng Client ID của bạn
+    const clientSecret = "89a258a5964f44a7840dbc06c6354004"; // Thay bằng Client Secret của bạn
 
-const getAccessToken = async () => {
-    const credentials = btoa(
-        `${process.env.REACT_APP_SPOTIFY_CLIENT_ID}:${process.env.REACT_APP_SPOTIFY_CLIENT_SECRET}`
-    );
-
-    const response = await axios.post(SPOTIFY_TOKEN_URL, "grant_type=client_credentials", {
-        headers: {
-            Authorization: `Basic ${credentials}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-        },
-    });
-
-    return response.data.access_token;
-};
-
-export const fetchSongDetails = async (songName) => {
     try {
-        const accessToken = await getAccessToken();
-
-        const response = await axios.get(SPOTIFY_SEARCH_URL, {
-            headers: {
-                Authorization: `Bearer ${accessToken}`,
-            },
-            params: {
-                q: songName,
-                type: "track",
-                limit: 1,
-            },
-        });
-
-        const song = response.data.tracks.items[0];
-
-        return {
-            name: song.name,
-            artist: song.artists[0].name,
-            url: song.external_urls.spotify,
-            albumArt: song.album.images[0].url,
-        };
+        const response = await axios.post(
+            "https://accounts.spotify.com/api/token",
+            "grant_type=client_credentials",
+            {
+                headers: {
+                    "Content-Type": "application/x-www-form-urlencoded",
+                    Authorization: `Basic ${btoa(`${clientId}:${clientSecret}`)}`, // Mã hóa Base64
+                },
+            }
+        );
+        return response.data.access_token; // Trả về Access Token
     } catch (error) {
-        console.error("Error fetching song details:", error);
-        return null;
+        console.error("Error fetching Spotify token:", error);
+        return null; // Trả về null nếu có lỗi
     }
 };

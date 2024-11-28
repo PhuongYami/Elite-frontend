@@ -8,6 +8,7 @@ import Dashboard from "./pages/Dashboard";
 import { UserProvider } from "./contexts/UserContext";
 import Profile from "./pages/Profile"; // Import Profile
 import EditProfile from "./pages/EditProfile";
+import Messages from "./pages/Messages"; // Import file Messages
 
 const App = () => {
   return (
@@ -20,6 +21,7 @@ const App = () => {
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/messages" element={<Messages />} /> {/* Route Messages */}
             <Route path="/profile" element={<Profile />} /> {/* Thêm Profile */}
             <Route path="/edit-profile" element={<EditProfile />} />
           </Routes>

@@ -21,9 +21,17 @@ export const UserProvider = ({ children }) => {
             { value: "travel", label: "Traveling" },
         ],
         bio: "Energetic and outgoing.",
-        favoriteSong: null, // Mặc định chưa có bài hát yêu thích
+        favoriteSong: {
+            title: "Shape of You",
+            artist: "Ed Sheeran",
+            url: "https://example.com/shape-of-you.mp3", // URL giả định
+        },
     });
 
+    /**
+     * Hàm cập nhật dữ liệu người dùng.
+     * @param {Object} updatedFields - Các trường cần cập nhật
+     */
     const updateUser = (updatedFields) => {
         setUser((prevUser) => {
             const updatedUser = { ...prevUser, ...updatedFields };
