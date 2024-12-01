@@ -14,7 +14,6 @@ const App = () => {
     <UserProvider>
       <Router>
         <Navbar />
-        <div className="pt-16">
           <Routes>
             <Route path="/" element={<Home />} />
             <Route path="/login" element={<Login />} />
@@ -23,7 +22,6 @@ const App = () => {
             <Route path="/profile" element={<Profile />} /> {/* Thêm Profile */}
             <Route path="/edit-profile" element={<EditProfile />} />
           </Routes>
-        </div>
       </Router>
     </UserProvider>
   );
