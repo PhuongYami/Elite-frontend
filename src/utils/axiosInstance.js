@@ -15,8 +15,8 @@ const axiosInstance = axios.create({
 axiosInstance.interceptors.request.use(
     (config) =>
     {
-        // Gắn token vào header nếu cần
-        const token = localStorage.getItem('token');
+        const state = store.getState(); // Lấy state từ Redux store
+        const token = state.auth.token;
         if (token)
         {
             config.headers.Authorization = `Bearer ${ token }`;
