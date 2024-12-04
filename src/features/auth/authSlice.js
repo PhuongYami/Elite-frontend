@@ -2,14 +2,14 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import authApi from '../../api/authApi';
 
 // Refresh token
-export const checkTokenExpiration = createAsyncThunk(
-    'auth/checkTokenExpiration',
+export const refreshAccessToken = createAsyncThunk(
+    'auth/refreshAccessToken',
     async (_, { dispatch, rejectWithValue }) =>
     {
         try
         {
             const response = await authApi.refreshToken();
-            return response;
+            return response.data.token;
         } catch (error)
         {
             dispatch(logoutUser());
@@ -26,7 +26,7 @@ export const fetchCurrentUser = createAsyncThunk(
         try
         {
             const response = await authApi.getMe();
-            return response;
+            return response.data.user;
         } catch (error)
         {
             return rejectWithValue(error.response?.data?.message || 'Failed to fetch user');
@@ -42,7 +42,7 @@ export const loginUser = createAsyncThunk(
         try
         {
             const response = await authApi.login({ email, password });
-            return response;
+            return response.data;
         } catch (error)
         {
             return rejectWithValue(error.response?.data?.message || 'Login failed');
@@ -58,7 +58,7 @@ export const logoutUser = createAsyncThunk(
         try
         {
             await authApi.logout();
-            return true;
+            return true; // Trả về kết quả thành công
         } catch (error)
         {
             return rejectWithValue(error.response?.data?.message || 'Logout failed');
@@ -166,13 +166,25 @@ const authSlice = createSlice({
         {
             state.error = null;
         },
+        setAccessToken(state, action)
+        {
+            state.token = action.payload;
+        },
         setAuth(state, action)
         {
-            const { user, token } = action.payload;
-            state.isAuthenticated = true;
-            state.user = user;
+            const { token, user } = action.payload;
             state.token = token;
+            state.user = user;
+            state.isAuthenticated = !!token;
         },
+        clearAuth(state)
+        {
+            state.token = null;
+            state.user = null;
+            state.isAuthenticated = false;
+        },
+
+
     },
     extraReducers: (builder) =>
     {
@@ -201,7 +213,7 @@ const authSlice = createSlice({
             .addCase(loginUser.fulfilled, (state, action) =>
             {
                 state.loading = false;
-                state.token = action.payload.token;
+                state.token = action.payload;
                 state.isAuthenticated = true;
                 state.user = action.payload.user;
             })
@@ -211,11 +223,22 @@ const authSlice = createSlice({
                 state.error = action.payload;
             })
 
+            .addCase(logoutUser.pending, (state) =>
+            {
+                state.loading = true;
+                state.error = null;
+            })
             .addCase(logoutUser.fulfilled, (state) =>
             {
+                state.loading = false;
                 state.token = null;
                 state.isAuthenticated = false;
                 state.user = null;
+            })
+            .addCase(logoutUser.rejected, (state, action) =>
+            {
+                state.loading = false;
+                state.error = action.payload;
             })
 
             .addCase(sendMailOTP.pending, (state) =>
@@ -281,15 +304,42 @@ const authSlice = createSlice({
                 state.loading = false;
                 state.error = action.payload;
             })
-
-
+            .addCase(fetchCurrentUser.pending, (state) =>
+            {
+                state.loading = true;
+                state.error = null;
+            })
             .addCase(fetchCurrentUser.fulfilled, (state, action) =>
             {
-                state.user = action.payload.user;
+                state.loading = false;
+                state.user = action.payload; // Lưu thông tin user
                 state.isAuthenticated = true;
+            })
+            .addCase(fetchCurrentUser.rejected, (state, action) =>
+            {
+                state.loading = false;
+                state.error = action.payload;
+                state.isAuthenticated = false;
+            })
+            .addCase(refreshAccessToken.pending, (state) =>
+            {
+                state.loading = true;
+            })
+            .addCase(refreshAccessToken.fulfilled, (state, action) =>
+            {
+                state.token = action.payload; // Lưu access token vào Redux
+                state.isAuthenticated = true;
+                state.loading = false;
+            })
+            .addCase(refreshAccessToken.rejected, (state, action) =>
+            {
+                state.token = null; // Xóa token nếu làm mới thất bại
+                state.isAuthenticated = false;
+                state.error = action.payload;
+                state.loading = false;
             });
     },
 });
 
-export const { clearMessage, clearError, setAuth } = authSlice.actions;
+export const { clearMessage, clearError, setAuth, clearAuth, setAccessToken } = authSlice.actions;
 export default authSlice.reducer;
