@@ -1,26 +1,12 @@
-const UserSection = ({
-  isAuthenticated,
-  loading,
-  error,
-  onLogout,
-  onLogin,
-  onRegister,
-}) => {
-  if (loading) {
-    return <p className="text-sm text-gray-500">Loading...</p>;
-  }
-
-  if (error) {
-    return <p className="text-sm text-red-500">Error: {error}</p>;
-  }
-
+const UserSection = ({ isAuthenticated, user, onLogout, onLogin, onRegister }) => {
   return isAuthenticated ? (
     <div className="flex items-center space-x-4 flex-shrink-0">
       <img
-        src="https://images.pexels.com/photos/20787/pexels-photo.jpg?auto=compress&cs=tinysrgb&h=150"
-        alt="User Avatar"
-        className="w-10 h-10 rounded-full border-2 border-pink-600"
+        src={user?.avatar || "https://via.placeholder.com/150"}
+        alt={`${user?.username || "User"}'s Avatar`}
+        className="w-10 h-10 rounded-full border-2 border-pink-600 object-cover"
       />
+      <span className="text-sm font-medium text-gray-700">{user?.username}</span>
       <button
         onClick={onLogout}
         className="text-sm text-pink-600 hover:underline"
