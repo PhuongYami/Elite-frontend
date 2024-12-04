@@ -9,7 +9,7 @@ export const checkTokenExpiration = createAsyncThunk(
         try
         {
             const response = await authApi.refreshToken();
-            return response.data;
+            return response;
         } catch (error)
         {
             dispatch(logoutUser());
@@ -17,23 +17,23 @@ export const checkTokenExpiration = createAsyncThunk(
         }
     }
 );
+
+// Fetch current user
 export const fetchCurrentUser = createAsyncThunk(
     'auth/getMe',
-    async (_, { getState, rejectWithValue }) =>
+    async (_, { rejectWithValue }) =>
     {
-        const token = getState().auth.token; // Lấy token từ Redux store
-        if (!token) return rejectWithValue('No token available');
-
         try
         {
-            const response = await authApi.getMe(token); // Gọi API lấy thông tin người dùng
-            return response.data;
+            const response = await authApi.getMe();
+            return response;
         } catch (error)
         {
             return rejectWithValue(error.response?.data?.message || 'Failed to fetch user');
         }
     }
 );
+
 // Login
 export const loginUser = createAsyncThunk(
     'auth/login',
@@ -42,7 +42,7 @@ export const loginUser = createAsyncThunk(
         try
         {
             const response = await authApi.login({ email, password });
-            return response.data;
+            return response;
         } catch (error)
         {
             return rejectWithValue(error.response?.data?.message || 'Login failed');
@@ -73,8 +73,8 @@ export const registerUser = createAsyncThunk(
     {
         try
         {
-            const { data } = await authApi.register(userData);
-            return data;
+            const response = await authApi.register(userData);
+            return response;
         } catch (error)
         {
             return rejectWithValue(error.response?.data?.message || 'Registration failed');
@@ -82,82 +82,66 @@ export const registerUser = createAsyncThunk(
     }
 );
 
-// Send OTP
-export const sendOTP = createAsyncThunk(
-    'auth/sendOTP',
-    async (data, { rejectWithValue }) =>
+// Send Mail OTP
+export const sendMailOTP = createAsyncThunk(
+    'auth/sendMailOTP',
+    async ({ email }, { rejectWithValue }) =>
     {
         try
         {
-            const response = await authApi.sendOTP(data);
-            return response.data;
+            const response = await authApi.sendMailOTP({ email });
+            return response;
         } catch (error)
         {
-            return rejectWithValue(error.response?.data?.message || 'Failed to send OTP');
+            return rejectWithValue(error.response?.data?.message || 'Failed to send mail OTP');
         }
     }
 );
 
-// Verify OTP
-export const verifyOTP = createAsyncThunk(
-    'auth/verifyOTP',
-    async (data, { rejectWithValue }) =>
+// Send Phone OTP
+export const sendPhoneOTP = createAsyncThunk(
+    'auth/sendPhoneOTP',
+    async ({ phone }, { rejectWithValue }) =>
     {
         try
         {
-            const response = await authApi.verifyOTP(data);
-            return response.data;
+            const response = await authApi.sendPhoneOTP({ phone });
+            return response;
         } catch (error)
         {
-            return rejectWithValue(error.response?.data?.message || 'OTP verification failed');
+            return rejectWithValue(error.response?.data?.message || 'Failed to send phone OTP');
         }
     }
 );
 
-// Verify Email
-export const verifyEmail = createAsyncThunk(
-    'auth/verify-email',
-    async (data, { rejectWithValue }) =>
+// Verify OTP (Phone)
+export const verifyPhoneOTP = createAsyncThunk(
+    'auth/verifyPhoneOTP',
+    async ({ phone, otp }, { rejectWithValue }) =>
     {
         try
         {
-            const response = await authApi.verifyEmail(data);
-            return response.data;
+            const response = await authApi.verifyPhone({ phone, otp });
+            return response;
         } catch (error)
         {
-            return rejectWithValue(error.response?.data?.message || 'Email verification failed');
+            return rejectWithValue(error.response?.data?.message || 'Phone OTP verification failed');
         }
     }
 );
 
-// Reset Password
-export const resetPassword = createAsyncThunk(
-    'auth/resetPassword',
-    async ({ resetToken, data }, { rejectWithValue }) =>
+// Verify Email OTP
+export const verifyEmailOTP = createAsyncThunk(
+    'auth/verifyEmail',
+    async ({ email, otpCode }, { rejectWithValue }) =>
     {
         try
         {
-            const response = await authApi.resetPassword(resetToken, data);
-            return response.data;
+            const response = await authApi.verifyEmail({ email, otpCode });
+            return response;
         } catch (error)
         {
-            return rejectWithValue(error.response?.data?.message || 'Password reset failed');
-        }
-    }
-);
-
-// Reset Password by Phone
-export const resetPasswordByPhone = createAsyncThunk(
-    'auth/resetPasswordByPhone',
-    async (data, { rejectWithValue }) =>
-    {
-        try
-        {
-            const response = await authApi.resetPasswordByPhone(data);
-            return response.data;
-        } catch (error)
-        {
-            return rejectWithValue(error.response?.data?.message || 'Password reset by phone failed');
+            return rejectWithValue(error.response?.data?.message || 'Email OTP verification failed');
         }
     }
 );
@@ -182,7 +166,7 @@ const authSlice = createSlice({
         {
             state.error = null;
         },
-        setAuth: (state, action) =>
+        setAuth(state, action)
         {
             const { user, token } = action.payload;
             state.isAuthenticated = true;
@@ -193,7 +177,6 @@ const authSlice = createSlice({
     extraReducers: (builder) =>
     {
         builder
-            // Register
             .addCase(registerUser.pending, (state) =>
             {
                 state.loading = true;
@@ -210,7 +193,6 @@ const authSlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Login
             .addCase(loginUser.pending, (state) =>
             {
                 state.loading = true;
@@ -229,124 +211,85 @@ const authSlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Logout
-            .addCase(logoutUser.pending, (state) =>
-            {
-                state.loading = true;
-                state.error = null;
-            })
             .addCase(logoutUser.fulfilled, (state) =>
             {
-                state.loading = false;
                 state.token = null;
                 state.isAuthenticated = false;
-            })
-            .addCase(logoutUser.rejected, (state, action) =>
-            {
-                state.loading = false;
-                state.error = action.payload;
+                state.user = null;
             })
 
-            // Send OTP
-            .addCase(sendOTP.pending, (state) =>
+            .addCase(sendMailOTP.pending, (state) =>
             {
                 state.loading = true;
                 state.error = null;
             })
-            .addCase(sendOTP.fulfilled, (state, action) =>
+            .addCase(sendMailOTP.fulfilled, (state, action) =>
             {
                 state.loading = false;
                 state.message = action.payload.message;
             })
-            .addCase(sendOTP.rejected, (state, action) =>
+            .addCase(sendMailOTP.rejected, (state, action) =>
             {
                 state.loading = false;
                 state.error = action.payload;
             })
 
-            // Verify OTP
-            .addCase(verifyOTP.pending, (state) =>
+            .addCase(sendPhoneOTP.pending, (state) =>
             {
                 state.loading = true;
                 state.error = null;
             })
-            .addCase(verifyOTP.fulfilled, (state) =>
+            .addCase(sendPhoneOTP.fulfilled, (state, action) =>
+            {
+                state.loading = false;
+                state.message = action.payload.message;
+            })
+            .addCase(sendPhoneOTP.rejected, (state, action) =>
+            {
+                state.loading = false;
+                state.error = action.payload;
+            })
+
+            .addCase(verifyPhoneOTP.pending, (state) =>
+            {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(verifyPhoneOTP.fulfilled, (state) =>
             {
                 state.loading = false;
                 state.isAuthenticated = true;
             })
-            .addCase(verifyOTP.rejected, (state, action) =>
+            .addCase(verifyPhoneOTP.rejected, (state, action) =>
             {
                 state.loading = false;
                 state.error = action.payload;
             })
 
-            // Verify Email
-            .addCase(verifyEmail.pending, (state) =>
+            .addCase(verifyEmailOTP.pending, (state) =>
             {
                 state.loading = true;
                 state.error = null;
             })
-            .addCase(verifyEmail.fulfilled, (state, action) =>
+            .addCase(verifyEmailOTP.fulfilled, (state) =>
             {
                 state.loading = false;
-                state.message = action.payload.message;
+                state.message = 'Email verified successfully';
             })
-            .addCase(verifyEmail.rejected, (state, action) =>
+            .addCase(verifyEmailOTP.rejected, (state, action) =>
             {
                 state.loading = false;
                 state.error = action.payload;
             })
 
-            // Reset Password
-            .addCase(resetPassword.pending, (state) =>
-            {
-                state.loading = true;
-                state.error = null;
-            })
-            .addCase(resetPassword.fulfilled, (state, action) =>
-            {
-                state.loading = false;
-                state.message = action.payload.message;
-            })
-            .addCase(resetPassword.rejected, (state, action) =>
-            {
-                state.loading = false;
-                state.error = action.payload;
-            })
 
-            // Reset Password by Phone
-            .addCase(resetPasswordByPhone.pending, (state) =>
-            {
-                state.loading = true;
-                state.error = null;
-            })
-            .addCase(resetPasswordByPhone.fulfilled, (state, action) =>
-            {
-                state.loading = false;
-                state.message = action.payload.message;
-            })
-            .addCase(resetPasswordByPhone.rejected, (state, action) =>
-            {
-                state.loading = false;
-                state.error = action.payload;
-            })
-            //get Me
             .addCase(fetchCurrentUser.fulfilled, (state, action) =>
             {
-                state.isAuthenticated = true;
                 state.user = action.payload.user;
-            })
-            .addCase(fetchCurrentUser.rejected, (state, action) =>
-            {
-                state.isAuthenticated = false;
-                state.token = null;
-                state.user = null;
-                state.error = action.payload;
-            })
+                state.isAuthenticated = true;
+            });
     },
 });
 
 export const { clearMessage, clearError, setAuth } = authSlice.actions;
-
 export default authSlice.reducer;
