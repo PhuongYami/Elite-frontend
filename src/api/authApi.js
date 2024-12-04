@@ -49,22 +49,29 @@ const authApi = {
     resetPasswordByPhone: (data) => axiosInstance.post('/auth/send-password-reset-otp', data),
 
     /**
-     * Gửi mã OTP tới email hoặc số điện thoại.
-     * @param {Object} data - Dữ liệu gửi OTP ({ email hoặc phone }).
+     * Gửi mã OTP tới số điện thoại.
+     * @param {Object} data - Số điện thoại của người dùng ({ phone }).
      * @returns {Promise} Kết quả API trả về.
      */
-    sendOTP: (data) => axiosInstance.post('/auth/send-otp', data),
+    sendPhoneOTP: (data) => axiosInstance.post('/auth/send-otp-phone', data),
 
     /**
-     * Xác thực mã OTP.
-     * @param {Object} data - Dữ liệu xác thực OTP ({ email hoặc phone, otp }).
+     * Gửi mã OTP tới email.
+     * @param {Object} data - Email của người dùng ({ email }).
      * @returns {Promise} Kết quả API trả về.
      */
-    verifyOTP: (data) => axiosInstance.post('/auth/verify-phone', data),
+    sendMailOTP: (data) => axiosInstance.post('/auth/send-otp-mail', data),
 
     /**
-     * Xác thực email của người dùng.
-     * @param {Object} data - Mã xác thực OTP và email.
+     * Xác thực mã OTP từ số điện thoại.
+     * @param {Object} data - Dữ liệu xác thực OTP ({ phone, otp }).
+     * @returns {Promise} Kết quả API trả về.
+     */
+    verifyPhone: (data) => axiosInstance.post('/auth/verify-phone', data),
+
+    /**
+     * Xác thực mã OTP từ email.
+     * @param {Object} data - Dữ liệu xác thực OTP ({ email, otp }).
      * @returns {Promise} Kết quả API trả về.
      */
     verifyEmail: (data) => axiosInstance.post('/auth/verify-email', data),
