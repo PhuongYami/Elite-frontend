@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
-import { verifyEmail, sendOTP, setAuth } from '../features/auth/authSlice'; // Import các hành động từ authSlice
+import { verifyEmailOTP, sendMailOTP, setAuth } from '../features/auth/authSlice'; // Import các hành động từ authSlice
 
 const OTPVerification = () => {
   const dispatch = useDispatch();
@@ -28,7 +28,7 @@ const OTPVerification = () => {
     }
 
     try {
-      const result = await dispatch(verifyEmail({ email, otpCode })).unwrap();
+      const result = await dispatch(verifyEmailOTP({ email, otpCode })).unwrap();
       console.log('OTP verification successful:', result);
       alert('Xác thực thành công!');
       const { user, token } = result;
@@ -43,7 +43,7 @@ const OTPVerification = () => {
   const handleResendOTP = async () => {
     setResendLoading(true);
     try {
-      const result = await dispatch(sendOTP({ email })).unwrap();
+      const result = await dispatch(sendMailOTP({ email })).unwrap();
       console.log('Resent OTP successfully:', result);
       alert('Mã OTP mới đã được gửi!');
     } catch (err) {
