@@ -19,8 +19,13 @@ const App = () => {
   useEffect(() => {
     const initializeAuth = async () => {
       try {
-        await dispatch(refreshAccessToken()).unwrap();
-        await dispatch(fetchCurrentUser()).unwrap();
+        const path = window.location.pathname;
+
+        // Chỉ làm mới token nếu không ở trang đăng nhập hoặc đăng ký
+        if (!['/login', '/register'].includes(path)) {
+          await dispatch(refreshAccessToken()).unwrap();
+          await dispatch(fetchCurrentUser()).unwrap();
+        }
       } catch (error) {
         console.error("Failed to initialize authentication:", error);
       } finally {

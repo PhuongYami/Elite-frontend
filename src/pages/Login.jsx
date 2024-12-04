@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { loginUser } from '../features/auth/authSlice';
+import { loginUser,clearError } from '../features/auth/authSlice';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
@@ -10,6 +10,10 @@ const Login = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  useEffect(() => {
+    // Xóa lỗi khi vào trang login
+    dispatch(clearError());
+  }, [dispatch]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
