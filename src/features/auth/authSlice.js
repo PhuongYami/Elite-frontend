@@ -1,6 +1,25 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import authApi from '../../api/authApi';
 
+export const resetPassword = createAsyncThunk(
+    "auth/resetPassword",
+    async ({ resetToken, password, confirmPassword }, { rejectWithValue }) =>
+    {
+        try
+        {
+            const response = await authApi.resetPassword(resetToken, {
+                password,
+                confirmPassword,
+            });
+            return response.data; // Dữ liệu trả về từ API
+        } catch (error)
+        {
+            return rejectWithValue(
+                error.response?.data?.message || "Error resetting password"
+            );
+        }
+    }
+);
 // Refresh token
 export const refreshAccessToken = createAsyncThunk(
     'auth/refreshAccessToken',
@@ -142,6 +161,20 @@ export const verifyEmailOTP = createAsyncThunk(
         } catch (error)
         {
             return rejectWithValue(error.response?.data?.message || 'Email OTP verification failed');
+        }
+    }
+);
+export const forgotPassword = createAsyncThunk(
+    "auth/forgotPassword",
+    async ({ email }, { rejectWithValue }) =>
+    {
+        try
+        {
+            const response = await authApi.forgotPassword({ email });
+            return response.data; // Trả về dữ liệu từ API
+        } catch (error)
+        {
+            return rejectWithValue(error.response?.data?.message || "Failed to send reset email");
         }
     }
 );
@@ -337,6 +370,37 @@ const authSlice = createSlice({
                 state.isAuthenticated = false;
                 state.error = action.payload;
                 state.loading = false;
+            })
+            .addCase(forgotPassword.pending, (state) =>
+            {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(forgotPassword.fulfilled, (state, action) =>
+            {
+                state.loading = false;
+                state.message = action.payload.message; // Thông báo từ server
+            })
+            .addCase(forgotPassword.rejected, (state, action) =>
+            {
+                state.loading = false;
+                state.error = action.payload; // Thông báo lỗi
+            })
+            .addCase(resetPassword.pending, (state) =>
+            {
+                state.loading = true;
+                state.error = null;
+                state.message = null;
+            })
+            .addCase(resetPassword.fulfilled, (state, action) =>
+            {
+                state.loading = false;
+                state.message = action.payload.message; // Thông báo từ server
+            })
+            .addCase(resetPassword.rejected, (state, action) =>
+            {
+                state.loading = false;
+                state.error = action.payload; // Thông báo lỗi
             });
     },
 });

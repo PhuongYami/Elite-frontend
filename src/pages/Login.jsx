@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { loginUser,clearError } from '../features/auth/authSlice';
+import { loginUser, clearError, clearMessage } from '../features/auth/authSlice';
 import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
@@ -10,9 +10,11 @@ const Login = () => {
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
+  // Xóa lỗi và thông báo khi trang được tải
   useEffect(() => {
-    // Xóa lỗi khi vào trang login
     dispatch(clearError());
+    dispatch(clearMessage());
   }, [dispatch]);
 
   const handleSubmit = (e) => {
@@ -22,6 +24,11 @@ const Login = () => {
         navigate('/dashboard');
       }
     });
+  };
+
+  // Điều hướng đến trang Quên mật khẩu
+  const handleForgotPassword = () => {
+    navigate('/forgot-password');
   };
 
   return (
@@ -58,6 +65,14 @@ const Login = () => {
             {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </button>
         </form>
+        <div className="mt-4 text-center">
+          <button
+            onClick={handleForgotPassword}
+            className="text-pink-600 hover:underline focus:outline-none"
+          >
+            Quên mật khẩu?
+          </button>
+        </div>
       </div>
     </div>
   );
