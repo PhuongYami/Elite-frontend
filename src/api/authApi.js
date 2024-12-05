@@ -81,6 +81,8 @@ const authApi = {
      * @returns {Promise} Kết quả API trả về.
      */
     getMe: () => axiosInstance.get('/auth/me'),
+    verifyGoogleToken: (token) =>
+        axiosInstance.post("/auth/google-callback", { token }),
 };
 
 export default authApi;

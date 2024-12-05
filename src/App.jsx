@@ -13,6 +13,7 @@ import EditProfile from "./pages/EditProfile";
 import ProtectedRoute from "./components/ProtectedRoute";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import GoogleCallbackHandler from "./components/GoogleCallbackHandler"; 
 
 const App = () => {
   const dispatch = useDispatch();
@@ -53,6 +54,7 @@ const App = () => {
         <Route path="/otp-verification" element={<OTPVerification />} />
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:resetToken" element={<ResetPassword />} />
+        <Route path="/google-callback/:token" element={<GoogleCallbackHandler />} />
         <Route
           path="/dashboard"
           element={

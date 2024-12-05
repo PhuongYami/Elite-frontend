@@ -1,6 +1,25 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import authApi from '../../api/authApi';
 
+export const googleLogin = createAsyncThunk(
+    "auth/googleLogin",
+    async (token, { rejectWithValue }) =>
+    {
+        try
+        {
+            // Gửi token đến backend để xác thực và lấy thông tin người dùng
+            const response = await authApi.verifyGoogleToken(token); // authApi chứa API call đến backend
+            return response.data; // Dữ liệu trả về từ backend (user, token)
+        } catch (error)
+        {
+            return rejectWithValue(
+                error.response?.data?.message || "Failed to log in with Google"
+            );
+        }
+    }
+);
+
+
 export const resetPassword = createAsyncThunk(
     "auth/resetPassword",
     async ({ resetToken, password, confirmPassword }, { rejectWithValue }) =>
@@ -201,7 +220,8 @@ const authSlice = createSlice({
         },
         setAccessToken(state, action)
         {
-            state.token = action.payload;
+            state.token = action.payload.token;
+            state.isAuthenticated = !!action.payload.token;
         },
         setAuth(state, action)
         {
@@ -401,6 +421,23 @@ const authSlice = createSlice({
             {
                 state.loading = false;
                 state.error = action.payload; // Thông báo lỗi
+            })
+            .addCase(googleLogin.pending, (state) =>
+            {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(googleLogin.fulfilled, (state, action) =>
+            {
+                state.loading = false;
+                state.token = action.payload.token;
+                state.user = action.payload.user;
+                state.isAuthenticated = true;
+            })
+            .addCase(googleLogin.rejected, (state, action) =>
+            {
+                state.loading = false;
+                state.error = action.payload;
             });
     },
 });

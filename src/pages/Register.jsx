@@ -3,6 +3,7 @@ import { MapPin, Loader2 } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
 import { registerUser } from "../features/auth/authSlice"; // Import từ slice của bạn
 import { useNavigate } from "react-router-dom";
+import GoogleLoginButton from '../components/GoogleLoginButton';
 
 const Register = () => {
   const dispatch = useDispatch();
@@ -255,6 +256,8 @@ const Register = () => {
           >
             {loading ? "Đang xử lý..." : "Đăng Ký"}
           </button>
+          <p className="text-center text-gray-600 mb-2">Hoặc</p>
+          <GoogleLoginButton /> {/* Thêm nút GoogleLoginButton */}
         </form>
       </div>
     </div>

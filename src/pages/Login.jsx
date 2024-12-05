@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, clearError, clearMessage } from '../features/auth/authSlice';
 import { useNavigate } from 'react-router-dom';
+import GoogleLoginButton from '../components/GoogleLoginButton';
+
 
 const Login = () => {
   const dispatch = useDispatch();
@@ -72,6 +74,8 @@ const Login = () => {
           >
             Quên mật khẩu?
           </button>
+          <p className="text-center text-gray-600 mb-2">Hoặc</p>
+          <GoogleLoginButton /> {/* Thêm nút GoogleLoginButton */}
         </div>
       </div>
     </div>
