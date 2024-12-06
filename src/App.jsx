@@ -7,6 +7,10 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
+import Discover from "./pages/Discover";
+import Messages from "./pages/Messages";
+import Activities from "./pages/Activities";
+import Search from "./pages/Search";
 import OTPVerification from "./pages/OTPVerification";
 import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
@@ -14,6 +18,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import GoogleCallbackHandler from "./components/GoogleCallbackHandler"; 
+
 
 const App = () => {
   const dispatch = useDispatch();
@@ -60,6 +65,38 @@ const App = () => {
           element={
             <ProtectedRoute>
               <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/discover"
+          element={
+            <ProtectedRoute>
+              <Discover />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/messages"
+          element={
+            <ProtectedRoute>
+              <Messages />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/activities"
+          element={
+            <ProtectedRoute>
+              <Activities />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/search"
+          element={
+            <ProtectedRoute>
+              <Search />
             </ProtectedRoute>
           }
         />
