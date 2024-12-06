@@ -21,7 +21,7 @@ const Navbar = () => {
         .unwrap()
         .catch((error) => console.error('Failed to fetch user:', error));
     }
-  }, [token, dispatch]);
+  }, [token,user, dispatch]);
 
   const handleLogout = async () => {
     try {

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { MapPin, Loader2 } from 'lucide-react';
-import { useDispatch, useSelector } from 'react-redux';
-import { registerUser } from '../features/auth/authSlice'; // Import từ slice của bạn
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from "react";
+import { MapPin, Loader2 } from "lucide-react";
+import { useDispatch, useSelector } from "react-redux";
+import { registerUser } from "../features/auth/authSlice"; // Import từ slice của bạn
+import { useNavigate } from "react-router-dom";
+import GoogleLoginButton from '../components/GoogleLoginButton';
 
 const Register = () => {
   const dispatch = useDispatch();
@@ -10,18 +11,18 @@ const Register = () => {
   const { loading, error } = useSelector((state) => state.auth);
 
   const [formData, setFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    phone: '',
-    firstName: '',
-    lastName: '',
-    dateOfBirth: '',
-    gender: '',
+    username: "",
+    email: "",
+    password: "",
+    phone: "",
+    firstName: "",
+    lastName: "",
+    dateOfBirth: "",
+    gender: "",
     location: {
       coordinates: [0, 0],
-      city: '',
-      country: '',
+      city: "",
+      country: "",
       isDetecting: false,
     },
   });
@@ -46,7 +47,7 @@ const Register = () => {
   };
 
   const detectLocation = () => {
-    if ('geolocation' in navigator) {
+    if ("geolocation" in navigator) {
       setFormData((prevState) => ({
         ...prevState,
         location: {
@@ -69,13 +70,17 @@ const Register = () => {
               ...prevState,
               location: {
                 coordinates: [longitude, latitude],
-                city: data.address.city || data.address.town || data.address.village || '',
-                country: data.address.country || '',
+                city:
+                  data.address.city ||
+                  data.address.town ||
+                  data.address.village ||
+                  "",
+                country: data.address.country || "",
                 isDetecting: false,
               },
             }));
           } catch (error) {
-            console.error('Lỗi khi lấy thông tin địa điểm:', error);
+            console.error("Lỗi khi lấy thông tin địa điểm:", error);
             setFormData((prevState) => ({
               ...prevState,
               location: {
@@ -87,7 +92,7 @@ const Register = () => {
           }
         },
         (error) => {
-          console.error('Lỗi khi lấy vị trí:', error);
+          console.error("Lỗi khi lấy vị trí:", error);
           setFormData((prevState) => ({
             ...prevState,
             location: {
@@ -95,11 +100,11 @@ const Register = () => {
               isDetecting: false,
             },
           }));
-          alert('Không thể lấy vị trí. Vui lòng nhập thủ công.');
+          alert("Không thể lấy vị trí. Vui lòng nhập thủ công.");
         }
       );
     } else {
-      alert('Trình duyệt của bạn không hỗ trợ định vị.');
+      alert("Trình duyệt của bạn không hỗ trợ định vị.");
     }
   };
 
@@ -108,23 +113,19 @@ const Register = () => {
     try {
       const result = await dispatch(registerUser(formData)).unwrap();
       console.log(result);
-      alert('Mã OTP đã được gửi tới email của bạn. Vui lòng kiểm tra!');
-      navigate('/otp-verification', { state: { email: formData.email } }); // Chuyển hướng tới trang OTP với email
+      alert("Mã OTP đã được gửi tới email của bạn. Vui lòng kiểm tra!");
+      navigate("/otp-verification", { state: { email: formData.email } }); // Chuyển hướng tới trang OTP với email
     } catch (err) {
-      console.error('Registration failed:', err);
+      console.error("Registration failed:", err);
     }
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-gray-100 p-4">
-      <div className="w-full max-w-md bg-white shadow-md rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-center mb-6">Đăng Ký</h2>
+    <div className="flex justify-center items-center min-h-screen bg-pink-100 p-4">
+      <div className="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
+        <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">Đăng Ký</h2>
 
-        {error && (
-          <div className="text-red-500 text-center mb-4">
-            {error}
-          </div>
-        )}
+        {error && <div className="text-red-600 text-center mb-4">{error}</div>}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
@@ -135,7 +136,7 @@ const Register = () => {
               onChange={handleInputChange}
               placeholder="Tên"
               required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
             />
             <input
               type="text"
@@ -144,7 +145,7 @@ const Register = () => {
               onChange={handleInputChange}
               placeholder="Họ"
               required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
             />
           </div>
 
@@ -155,7 +156,7 @@ const Register = () => {
             onChange={handleInputChange}
             placeholder="Tên đăng nhập"
             required
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
           />
 
           <input
@@ -165,7 +166,7 @@ const Register = () => {
             onChange={handleInputChange}
             placeholder="Email"
             required
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
           />
 
           <input
@@ -175,7 +176,7 @@ const Register = () => {
             onChange={handleInputChange}
             placeholder="Mật khẩu"
             required
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
           />
 
           <input
@@ -185,7 +186,7 @@ const Register = () => {
             onChange={handleInputChange}
             placeholder="Số điện thoại"
             required
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
           />
 
           <input
@@ -194,7 +195,7 @@ const Register = () => {
             value={formData.dateOfBirth}
             onChange={handleInputChange}
             required
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
           />
 
           <select
@@ -202,7 +203,7 @@ const Register = () => {
             value={formData.gender}
             onChange={handleInputChange}
             required
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
           >
             <option value="">Chọn giới tính</option>
             <option value="Male">Nam</option>
@@ -219,7 +220,7 @@ const Register = () => {
                 onChange={handleLocationChange}
                 placeholder="Thành phố"
                 required
-                className="flex-grow px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex-grow px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
               />
               <button
                 type="button"
@@ -242,19 +243,21 @@ const Register = () => {
               onChange={handleLocationChange}
               placeholder="Quốc gia"
               required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className={`w-full bg-blue-500 text-white py-2 rounded-md hover:bg-blue-600 transition duration-300 ${
-              loading ? 'opacity-50 cursor-not-allowed' : ''
+            className={`w-full bg-pink-600 text-white py-2 rounded-md hover:bg-pink-700 transition duration-300 ${
+              loading ? "opacity-50 cursor-not-allowed" : ""
             }`}
           >
-            {loading ? 'Đang xử lý...' : 'Đăng Ký'}
+            {loading ? "Đang xử lý..." : "Đăng Ký"}
           </button>
+          <p className="text-center text-gray-600 mb-2">Hoặc</p>
+          <GoogleLoginButton /> {/* Thêm nút GoogleLoginButton */}
         </form>
       </div>
     </div>
