@@ -1,9 +1,9 @@
-// src/utils/axiosInstance.js
 import axios from 'axios';
 import store from '../redux/store';
 import { setAuth, clearAuth } from '../features/auth/authSlice';
 import { isTokenExpired } from '../utils/jwtUtils';
 import authApi from '../api/authApi'
+
 const axiosInstance = axios.create({
     baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:5000/api/v1',
     withCredentials: true,
@@ -13,32 +13,70 @@ const axiosInstance = axios.create({
     },
 });
 
+let isRefreshing = false;
+let failedQueue = [];
+
+const processQueue = (error, token = null) =>
+{
+    failedQueue.forEach(prom =>
+    {
+        if (error)
+        {
+            prom.reject(error);
+        } else
+        {
+            prom.resolve(token);
+        }
+    });
+
+    failedQueue = [];
+};
+
 axiosInstance.interceptors.request.use(
     async (config) =>
     {
         const state = store.getState();
         let token = state.auth.token;
 
+        // Only attempt to refresh if token is expired
         if (token && isTokenExpired(token))
         {
-            try
+            if (!isRefreshing)
             {
-                // Làm mới token
-                const response = await authApi.refreshToken(); // Gọi API làm mới token
-                token = response.data.token;
+                isRefreshing = true;
 
-                // Cập nhật token mới vào Redux store
-                store.dispatch(setAuth({ token }));
+                try
+                {
+                    const response = await authApi.refreshToken();
+                    const newToken = response.data.token;
 
-                // Thêm token mới vào header Authorization
-                config.headers.Authorization = `Bearer ${ token }`;
-            } catch (error)
+                    // Update token in Redux
+                    store.dispatch(setAuth({ token: newToken }));
+
+                    processQueue(null, newToken);
+                    isRefreshing = false;
+
+                    config.headers.Authorization = `Bearer ${ newToken }`;
+                } catch (error)
+                {
+                    processQueue(error, null);
+                    store.dispatch(clearAuth());
+                    isRefreshing = false;
+
+                    return Promise.reject(error);
+                }
+            } else
             {
-                console.error('Failed to refresh token:', error);
-                store.dispatch(clearAuth()); // Xóa thông tin nếu làm mới thất bại
-                throw error;
+                // If refresh is in progress, queue the request
+                return new Promise((resolve, reject) =>
+                {
+                    failedQueue.push({ resolve, reject });
+                });
             }
-        } else if (token)
+        }
+
+        // Add token to request if available
+        if (token)
         {
             config.headers.Authorization = `Bearer ${ token }`;
         }
@@ -48,17 +86,28 @@ axiosInstance.interceptors.request.use(
     (error) => Promise.reject(error)
 );
 
-// Response Interceptor
 axiosInstance.interceptors.response.use(
     (response) => response,
-    (error) =>
+    async (error) =>
     {
-        if (error.response?.status === 401)
+        const originalRequest = error.config;
+
+        // Handle 401 errors
+        if (error.response?.status === 401 && !originalRequest._retry)
         {
-            console.error('Unauthorized: Clearing auth');
-            store.dispatch(clearAuth()); // Xóa thông tin nếu nhận lỗi 401
+            originalRequest._retry = true;
+
+            const state = store.getState();
+            if (!state.auth.token)
+            {
+                return Promise.reject(error);
+            }
+
+            // Clear authentication state
+            store.dispatch(clearAuth());
         }
         return Promise.reject(error);
     }
 );
+
 export default axiosInstance;
