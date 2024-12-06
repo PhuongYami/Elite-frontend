@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import userApi from '../../api/userApi';
 
-// Thunk to fetch the current user's information
+// Fetch current user
 export const fetchCurrentUser = createAsyncThunk(
     'user/fetchCurrentUser',
     async (_, { rejectWithValue }) =>
@@ -9,32 +9,31 @@ export const fetchCurrentUser = createAsyncThunk(
         try
         {
             const response = await userApi.getCurrentUser();
-            console.log('API response:', response.data);
-            return response.data; // Return the user data from API
+            return response.data.data; // Return user object
         } catch (error)
         {
-            return rejectWithValue(error.response?.data?.message || 'Failed to fetch user information.');
+            return rejectWithValue(error.response?.data?.message || 'Failed to fetch current user');
         }
     }
 );
 
-// Thunk to update the current user's information
-export const updateUserInfo = createAsyncThunk(
-    'user/updateUserInfo',
+// Update current user
+export const updateUser = createAsyncThunk(
+    'user/updateUser',
     async (userData, { rejectWithValue }) =>
     {
         try
         {
             const response = await userApi.updateUser(userData);
-            return response.data; // Return the updated user data
+            return response.data.data; // Return updated user object
         } catch (error)
         {
-            return rejectWithValue(error.response?.data?.message || 'Failed to update user information.');
+            return rejectWithValue(error.response?.data?.message || 'Failed to update user');
         }
     }
 );
 
-// Thunk to update the current user's profile
+// Update user profile
 export const updateUserProfile = createAsyncThunk(
     'user/updateUserProfile',
     async (profileData, { rejectWithValue }) =>
@@ -42,10 +41,10 @@ export const updateUserProfile = createAsyncThunk(
         try
         {
             const response = await userApi.updateUserProfile(profileData);
-            return response.data; // Return the updated profile data
+            return response.data.data; // Return updated profile object
         } catch (error)
         {
-            return rejectWithValue(error.response?.data?.message || 'Failed to update profile.');
+            return rejectWithValue(error.response?.data?.message || 'Failed to update profile');
         }
     }
 );
@@ -53,17 +52,20 @@ export const updateUserProfile = createAsyncThunk(
 const userSlice = createSlice({
     name: 'user',
     initialState: {
-        userInfo: null,
+        user: null,
         loading: false,
         error: null,
     },
     reducers: {
-        // Example of synchronous actions (if needed in the future)
+        clearError(state)
+        {
+            state.error = null;
+        },
     },
     extraReducers: (builder) =>
     {
         builder
-            // Handle fetchCurrentUser
+            // Fetch current user
             .addCase(fetchCurrentUser.pending, (state) =>
             {
                 state.loading = true;
@@ -72,7 +74,7 @@ const userSlice = createSlice({
             .addCase(fetchCurrentUser.fulfilled, (state, action) =>
             {
                 state.loading = false;
-                state.userInfo = action.payload;
+                state.user = action.payload;
             })
             .addCase(fetchCurrentUser.rejected, (state, action) =>
             {
@@ -80,24 +82,24 @@ const userSlice = createSlice({
                 state.error = action.payload;
             })
 
-            // Handle updateUserInfo
-            .addCase(updateUserInfo.pending, (state) =>
+            // Update current user
+            .addCase(updateUser.pending, (state) =>
             {
                 state.loading = true;
                 state.error = null;
             })
-            .addCase(updateUserInfo.fulfilled, (state, action) =>
+            .addCase(updateUser.fulfilled, (state, action) =>
             {
                 state.loading = false;
-                state.userInfo = { ...state.userInfo, ...action.payload }; // Merge updated data
+                state.user = { ...state.user, ...action.payload };
             })
-            .addCase(updateUserInfo.rejected, (state, action) =>
+            .addCase(updateUser.rejected, (state, action) =>
             {
                 state.loading = false;
                 state.error = action.payload;
             })
 
-            // Handle updateUserProfile
+            // Update user profile
             .addCase(updateUserProfile.pending, (state) =>
             {
                 state.loading = true;
@@ -106,7 +108,7 @@ const userSlice = createSlice({
             .addCase(updateUserProfile.fulfilled, (state, action) =>
             {
                 state.loading = false;
-                state.userInfo = { ...state.userInfo, profile: action.payload }; // Update profile in userInfo
+                state.user.profile = action.payload;
             })
             .addCase(updateUserProfile.rejected, (state, action) =>
             {
@@ -116,4 +118,5 @@ const userSlice = createSlice({
     },
 });
 
+export const { clearError } = userSlice.actions;
 export default userSlice.reducer;
