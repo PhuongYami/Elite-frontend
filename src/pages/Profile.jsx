@@ -17,10 +17,8 @@ const Profile = () => {
     const [currentIndex, setCurrentIndex] = useState(0);
 
     useEffect(() => {
-        if (!user) {
-            dispatch(fetchCurrentUser());
-        }
-    }, [dispatch, user]);
+        dispatch(fetchCurrentUser());
+    }, [dispatch]);
     const handleEditClick = () => {
         navigate('/edit-profile'); // Điều hướng sang trang EditProfile
     };
@@ -104,6 +102,7 @@ const Profile = () => {
                 <div className="grid md:grid-cols-3 gap-8 p-8">
                     {/* Left Column: Personal Details */}
                     <div className="md:col-span-2 space-y-8">
+
                         {/* Personal Statement */}
                         <section>
                             <h2 className="text-2xl font-light text-neutral-800 border-b pb-3 mb-6">Personal Statement</h2>
@@ -179,34 +178,58 @@ const Profile = () => {
                             <DetailItem icon={<MapPin />} label="Nationality" value={nationality} />
                             <DetailItem icon={<Diamond />} label="Religion" value={religion} />
                         </div>
-
                         {/* Photo Gallery */}
                         <div>
-                            <h3 className="text-xl font-light text-neutral-800 mb-4 flex items-center">
-                                <Camera className="mr-2 text-neutral-600" />
+                            <h3 className="text-2xl font-light text-neutral-800 mb-6 flex items-center">
+                                <Camera className="mr-2 text-neutral-600" size={24} />
                                 Gallery
                             </h3>
-                            <div className="grid grid-cols-3 gap-4">
-            {photos.map((photo, index) => (
-                <img
-                    key={index}
-                    src={photo.url}
-                    alt={`Photo ${index + 1}`}
-                    className="cursor-pointer object-cover rounded-lg shadow-md"
-                    onClick={() => openLightbox(index)}
-                />
-            ))}
-            <Lightbox
-                open={isOpen}
-                close={() => setIsOpen(false)}
-                slides={photos.map((photo) => ({ src: photo.url }))}
-                index={currentIndex}
-                on={{
-                    click: () => setIsOpen(false),
-                }}
-            />
-        </div>
+                            
+                            {photos.length === 0 ? (
+                                <div className="bg-neutral-100 rounded-2xl p-6 text-center">
+                                    <p className="text-neutral-500 italic">No photos uploaded yet</p>
+                                </div>
+                            ) : (
+                                <div className="grid grid-cols-3 gap-4">
+                            {photos.map((photo, index) => (
+                                <div 
+                                    key={index} 
+                                    className="relative group overflow-hidden rounded-xl"
+                                >
+                                    <img
+                                        src={photo.url}
+                                        alt={`Profile photo ${index + 1}`}
+                                        className="w-full h-40 object-cover cursor-pointer"
+                                        onClick={() => openLightbox(index)}
+                                    />
+                                </div>
+                            ))}
                         </div>
+                            )}
+
+                            {/* Lightbox for full-screen gallery */}
+                            <Lightbox
+                                open={isOpen}
+                                close={() => setIsOpen(false)}
+                                slides={photos.map((photo) => ({ 
+                                    src: photo.url,
+                                    width: photo.width,
+                                    height: photo.height
+                                }))}
+                                index={currentIndex}
+                                animation={{ fade: 300 }}
+                                carousel={{ finite: photos.length <= 1 }}
+                                on={{
+                                    click: () => setIsOpen(true),
+                                }}
+                                styles={{
+                                    container: { backgroundColor: 'rgba(0, 0, 0, 0.9)' },
+                                    buttonNext: { display: photos.length <= 1 ? 'none' : 'block' },
+                                    buttonPrev: { display: photos.length <= 1 ? 'none' : 'block' }
+                                }}
+                            />
+                        </div>
+                       
                     </div>
                 </div>
             </div>
