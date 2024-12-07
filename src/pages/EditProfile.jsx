@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { updateUserProfile } from '../features/user/userSlice';
+import { updateUserProfile,fetchCurrentUser } from '../features/user/userSlice';
+import ProfilePhotoUpload from '../components/ProfilePhotoUpload';
 import { 
-    MapPin, Briefcase, GraduationCap, Heart, 
-    Camera, Cigarette, Wine, Users, Ruler, 
-    Diamond, Baby, HomeIcon, Save, ArrowLeft, Plus
+    Save, ArrowLeft
 } from 'lucide-react';
 
 const EditProfile = () => {
@@ -62,6 +61,7 @@ const EditProfile = () => {
 
     // State for managing photo uploads
     const [photos, setPhotos] = useState([]);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [newHobby, setNewHobby] = useState('');
 
     // Load existing user data when component mounts
@@ -74,11 +74,25 @@ const EditProfile = () => {
                 : '',
                 preferenceAgeRange: user.profile.preferenceAgeRange || { min: 18, max: 50 },
                 height: user.profile.height?.$numberDecimal || '',
-                location: user.profile.location || { city: '', country: '' }
+                location: user.profile.location || { city: '', country: '' },
+                 photos: user.profile.photos || [],
             });
             setPhotos(user.profile.photos || []);
         }
     }, [user]);
+    useEffect(() => {
+        if (!user) {
+            dispatch(fetchCurrentUser());
+        }
+    }, [dispatch, user]);
+    const handlePhotoChange = (updatedPhotos) => {
+        // updatedPhotos là danh sách ảnh [{ url, uploadedAt }]
+        setFormData((prev) => ({
+            ...prev,
+            photos: updatedPhotos, // Cập nhật toàn bộ danh sách ảnh vào formData
+        }));
+    };
+    
 
     // Generic input change handler
     const handleInputChange = (e) => {
@@ -120,22 +134,6 @@ const EditProfile = () => {
             hobbies: prev.hobbies.filter(hobby => hobby !== hobbyToRemove)
         }));
     };
-
-    // Photo upload handler
-    const handlePhotoUpload = (e) => {
-        const files = Array.from(e.target.files);
-        const newPhotos = files.map(file => ({
-            url: URL.createObjectURL(file),
-            file: file
-        }));
-        setPhotos(prev => [...prev, ...newPhotos]);
-    };
-
-    // Remove photo
-    const removePhoto = (index) => {
-        setPhotos(prev => prev.filter((_, i) => i !== index));
-    };
-
     // Form submission handler
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -512,42 +510,11 @@ const EditProfile = () => {
                     {/* Right Column: Additional Details */}
                     <div>
                         {/* Photos */}
-                        <section className="mb-8">
-                            <h3 className="text-xl font-light text-neutral-800 mb-4 flex items-center">
-                                <Camera className="mr-2 text-neutral-600" />
-                                Profile Photos
-                            </h3>
-                            <div className="grid grid-cols-3 gap-4">
-                                {photos.map((photo, index) => (
-                                    <div key={index} className="relative">
-                                        <img 
-                                            src={photo.url} 
-                                            alt={`Photo ${index + 1}`} 
-                                            className="w-full h-24 object-cover rounded-lg"
-                                        />
-                                        <button 
-                                            type="button"
-                                            onClick={() => removePhoto(index)}
-                                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
-                                        >
-                                            ×
-                                        </button>
-                                    </div>
-                                ))}
-                                {photos.length < 6 && (
-                                    <label className="border-2 border-dashed border-neutral-300 rounded-lg flex items-center justify-center h-24 cursor-pointer hover:bg-neutral-100">
-                                        <input 
-                                            type="file" 
-                                            accept="image/*" 
-                                            multiple 
-                                            onChange={handlePhotoUpload}
-                                            className="hidden" 
-                                        />
-                                        <Plus className="text-neutral-500" />
-                                    </label>
-                                )}
-                            </div>
-                        </section>
+                        <ProfilePhotoUpload
+                            initialPhotos={formData.photos} // Truyền danh sách ảnh từ formData
+                            onPhotoChange={handlePhotoChange} // Truyền hàm để cập nhật formData khi ảnh thay đổi
+                        />
+
                         <section className="mb-8">
                             <h2 className="text-xl font-medium text-neutral-800 border-b pb-2 mb-4">Location Information</h2>
                             <div className="space-y-3">
