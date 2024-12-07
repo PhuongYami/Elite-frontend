@@ -1,283 +1,702 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import Select from "react-select";
-import EmojiPicker from "emoji-picker-react";
-import { useUser } from "../contexts/UserContext";
+import React, { useState, useEffect } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import { updateUserProfile } from '../features/user/userSlice';
+import { 
+    MapPin, Briefcase, GraduationCap, Heart, 
+    Camera, Cigarette, Wine, Users, Ruler, 
+    Diamond, Baby, HomeIcon, Save, ArrowLeft, Plus
+} from 'lucide-react';
 
 const EditProfile = () => {
+    const dispatch = useDispatch();
     const navigate = useNavigate();
-    const { user, updateUser } = useUser(); // Sử dụng updateUser từ context
-    const [formData, setFormData] = useState(user);
+    const { user, loading, error } = useSelector((state) => state.user);
 
-    const [showPicker, setShowPicker] = useState(false);
 
-    // Danh sách các tùy chọn
-    const musicOptions = [
-        { value: "shape-of-you", label: "Shape of You - Ed Sheeran" },
-        { value: "blinding-lights", label: "Blinding Lights - The Weeknd" },
-        { value: "someone-like-you", label: "Someone Like You - Adele" },
-        { value: "bohemian-rhapsody", label: "Bohemian Rhapsody - Queen" },
-        { value: "havana", label: "Havana - Camila Cabello" },
-    ];
+    // State to manage form data
+    const [formData, setFormData] = useState({
+        // Basic Information
+        firstName: '',
+        lastName: '',
+        dateOfBirth: '',
+        gender: '',
+        bio: '',
+        goals: 'Other',
+        relationshipStatus: '',
+        preferenceAgeRange: { min: 18, max: 50 },
+        interestedIn: '',
+        children: '',
+        childrenDesire: '',
+        
+        // Work and education
+        occupation: '',
+        professionalStatus: '',
+        workLocation: '',
+        religion: '',
+        education: '',
+        educationAt: [],
+        
+        // Lifestyle
+        height: '',
+        hobbies: [],
+        smoking: 'Do not smoke',
+        drinking: 'Do not drink',
+        
+        // Location
+        nationality: '',
+        location: {
+            type: 'Point',
+            coordinates: [0, 0],
+            city: '',
+            country: ''
+        },
+        
+        // Photos
+        photos: [],
+    
+        // Additional metadata
+        lastActiveAt: new Date()
+    });
+    
 
-    const companyOptions = [
-        { value: "fpt", label: "FPT Corporation" },
-        { value: "vinamilk", label: "Vinamilk" },
-        { value: "viettel", label: "Viettel" },
-        { value: "vnpt", label: "VNPT" },
-    ];
+    // State for managing photo uploads
+    const [photos, setPhotos] = useState([]);
+    const [newHobby, setNewHobby] = useState('');
 
-    const hobbyOptions = [
-        { value: "travel", label: "Traveling" },
-        { value: "reading", label: "Reading" },
-        { value: "cooking", label: "Cooking" },
-        { value: "sports", label: "Sports" },
-        { value: "gaming", label: "Gaming" },
-    ];
+    // Load existing user data when component mounts
+    useEffect(() => {
+        if (user && user.profile) {
+            setFormData({
+                ...user.profile,
+                dateOfBirth: user.profile.dateOfBirth
+                ? new Date(user.profile.dateOfBirth).toISOString().split('T')[0] 
+                : '',
+                preferenceAgeRange: user.profile.preferenceAgeRange || { min: 18, max: 50 },
+                height: user.profile.height?.$numberDecimal || '',
+                location: user.profile.location || { city: '', country: '' }
+            });
+            setPhotos(user.profile.photos || []);
+        }
+    }, [user]);
 
-    const zodiacOptions = [
-        "Aries", "Taurus", "Gemini", "Cancer", "Leo", "Virgo",
-        "Libra", "Scorpio", "Sagittarius", "Capricorn", "Aquarius", "Pisces"
-    ];
-
-    const educationOptions = [
-        { value: "vnu-hn", label: "Đại học Quốc gia Hà Nội" },
-        { value: "hust", label: "Trường Đại học Bách Khoa Hà Nội" },
-        { value: "ftu", label: "Trường Đại học Ngoại Thương" },
-        { value: "neu", label: "Trường Đại học Kinh tế Quốc dân" },
-    ];
-
-    // Xử lý thay đổi input
-    const handleChange = (e) => {
+    // Generic input change handler
+    const handleInputChange = (e) => {
         const { name, value } = e.target;
-        setFormData({ ...formData, [name]: value });
-    };
-
-    // Xử lý thay đổi Select
-    const handleSelectChange = (name, option) => {
-        setFormData({ ...formData, [name]: option });
-    };
-
-    // Xử lý chọn Emoji
-    const handleEmojiClick = (emojiObject) => {
-        setFormData({ ...formData, bio: (formData.bio || "") + emojiObject.emoji });
-        setShowPicker(false);
-    };
-
-    // Xử lý upload avatar
-    const handleAvatarChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const imageUrl = URL.createObjectURL(file);
-            setFormData({ ...formData, avatar: imageUrl });
+        
+        // Special handling for nested objects
+        if (name.includes('.')) {
+            const [parent, child] = name.split('.');
+            setFormData(prev => ({
+                ...prev,
+                [parent]: {
+                    ...prev[parent],
+                    [child]: value
+                }
+            }));
+        } else {
+            setFormData(prev => ({
+                ...prev,
+                [name]: value
+            }));
         }
     };
 
-    // Xử lý lưu thông tin
-    const handleSave = (e) => {
-        e.preventDefault();
-        updateUser(formData); // Cập nhật dữ liệu vào context
-        console.log("Updated Profile Data:", formData); // Log kiểm tra dữ liệu
-        alert("Profile updated successfully!");
-        navigate("/profile");
+    // Add new hobby
+    const addHobby = () => {
+        if (newHobby && !formData.hobbies.includes(newHobby)) {
+            setFormData(prev => ({
+                ...prev,
+                hobbies: [...prev.hobbies, newHobby]
+            }));
+            setNewHobby('');
+        }
     };
 
+    // Remove hobby
+    const removeHobby = (hobbyToRemove) => {
+        setFormData(prev => ({
+            ...prev,
+            hobbies: prev.hobbies.filter(hobby => hobby !== hobbyToRemove)
+        }));
+    };
+
+    // Photo upload handler
+    const handlePhotoUpload = (e) => {
+        const files = Array.from(e.target.files);
+        const newPhotos = files.map(file => ({
+            url: URL.createObjectURL(file),
+            file: file
+        }));
+        setPhotos(prev => [...prev, ...newPhotos]);
+    };
+
+    // Remove photo
+    const removePhoto = (index) => {
+        setPhotos(prev => prev.filter((_, i) => i !== index));
+    };
+
+    // Form submission handler
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        
+        console.log('Submitting data:', formData); // Log để kiểm tra dữ liệu gửi đi
+    
+        try {
+            await dispatch(updateUserProfile(formData)); // Dispatch action
+            console.log('Profile updated successfully');
+            navigate('/profile'); // Chuyển hướng sau khi cập nhật thành công
+        } catch (err) {
+            console.error('Error updating profile:', err);
+        }
+    };
+    
+    const [newEducationInstitution, setNewEducationInstitution] = useState(''); // Giá trị cho trường mới
+
+    // Cập nhật trình độ học vấn
+    const handleEducationChange = (e) => {
+        setFormData((prev) => ({ ...prev, education: e.target.value }));
+    };
+    
+    // Thêm trường học mới
+    const addEducationInstitution = () => {
+        if (newEducationInstitution.trim() !== '' && !formData.educationAt.includes(newEducationInstitution.trim())) {
+            setFormData((prev) => ({
+                ...prev,
+                educationAt: [...prev.educationAt, newEducationInstitution.trim()],
+            }));
+            setNewEducationInstitution(''); // Reset input sau khi thêm
+        }
+    };
+    
+    // Xóa trường học khỏi danh sách
+    const removeEducationInstitution = (institutionToRemove) => {
+        setFormData((prev) => ({
+            ...prev,
+            educationAt: prev.educationAt.filter((institution) => institution !== institutionToRemove),
+        }));
+    };
+    const handleGetLocation = () => {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const latitude = position.coords.latitude;
+                    const longitude = position.coords.longitude;
+    
+                    try {
+                        // Sử dụng API của Nominatim để lấy thông tin city và country
+                        const response = await fetch(
+                            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`
+                        );
+                        const data = await response.json();
+    
+                        if (data && data.address) {
+                            const city = data.address.city || 
+                                         data.address.town || 
+                                         data.address.village || 
+                                         data.address.state;
+                            const country = data.address.country;
+    
+                            // Cập nhật toàn bộ location
+                            setFormData((prev) => ({
+                                ...prev,
+                                location: {
+                                    type: 'Point',
+                                    coordinates: [longitude, latitude],
+                                    city: city || '',
+                                    country: country || ''
+                                }
+                            }));
+                        }
+                    } catch (error) {
+                        console.error('Error fetching location details:', error);
+                    }
+                },
+                (error) => {
+                    console.error('Error fetching location:', error.message);
+                }
+            );
+        } else {
+            console.error('Geolocation is not supported by this browser.');
+        }
+    };
+    
+    
+    
+
+    if (loading) return <div className="fixed inset-0 flex justify-center items-center">Loading...</div>;
+    if (error) return <div className="text-red-600">Error: {error}</div>;
+
     return (
-        <div className="min-h-screen bg-pink-100 flex flex-col items-center">
-            <header className="w-full bg-white shadow-md flex items-center justify-between px-6 py-4">
-                <div className="text-2xl font-bold text-pink-600 cursor-pointer" onClick={() => navigate("/")}>
-                    EliteLusso
-                </div>
-            </header>
-
-            <main className="flex-1 w-full max-w-3xl bg-white shadow-lg rounded-lg p-6 mt-6">
-                <h1 className="text-2xl font-bold text-gray-800 mb-6">Edit Profile</h1>
-                <form onSubmit={handleSave} className="space-y-6">
-                    {/* Avatar */}
+        <div className="min-h-screen bg-neutral-50 flex justify-center items-center p-6">
+            <div className="w-full max-w-5xl bg-white shadow-2xl rounded-3xl overflow-hidden border border-neutral-200">
+                {/* Header */}
+                <div className="bg-gradient-to-br from-neutral-800 to-neutral-600 p-6 flex justify-between items-center">
                     <div className="flex items-center space-x-4">
-                        <img
-                            src={formData.avatar}
-                            alt="Avatar"
-                            className="w-32 h-32 rounded-lg border-2 border-pink-600"
-                        />
-                        <input
-                            type="file"
-                            accept="image/*"
-                            onChange={handleAvatarChange}
-                            className="text-sm text-gray-600"
-                        />
-                    </div>
-
-                    {/* Name */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Name</label>
-                        <input
-                            type="text"
-                            name="name"
-                            value={formData.name}
-                            onChange={handleChange}
-                            className="mt-1 w-full px-4 py-2 border rounded-md"
-                        />
-                    </div>
-
-                    {/* Age */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Age</label>
-                        <input
-                            type="number"
-                            name="age"
-                            value={formData.age}
-                            onChange={handleChange}
-                            className="mt-1 w-full px-4 py-2 border rounded-md"
-                        />
-                    </div>
-
-                    {/* Height */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Height (cm)</label>
-                        <input
-                            type="number"
-                            name="height"
-                            value={formData.height}
-                            onChange={handleChange}
-                            className="mt-1 w-full px-4 py-2 border rounded-md"
-                        />
-                    </div>
-
-                    {/* Weight */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Weight (kg)</label>
-                        <input
-                            type="number"
-                            name="weight"
-                            value={formData.weight}
-                            onChange={handleChange}
-                            className="mt-1 w-full px-4 py-2 border rounded-md"
-                        />
-                    </div>
-
-                    {/* Zodiac */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Zodiac Sign</label>
-                        <select
-                            name="zodiac"
-                            value={formData.zodiac}
-                            onChange={handleChange}
-                            className="mt-1 w-full px-4 py-2 border rounded-md"
+                        <button 
+                            onClick={() => navigate('/profile')} 
+                            className="text-white hover:bg-neutral-700 p-2 rounded-full"
                         >
-                            <option value="">Select Zodiac</option>
-                            {zodiacOptions.map((sign) => (
-                                <option key={sign} value={sign}>
-                                    {sign}
-                                </option>
-                            ))}
-                        </select>
+                            <ArrowLeft size={24} />
+                        </button>
+                        <h1 className="text-3xl font-thin text-white">Edit Profile</h1>
                     </div>
+                    <button 
+                        onClick={handleSubmit}
+                        className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                    >
+                        <Save size={18} />
+                        <span>Save Profile</span>
+                    </button>
+                </div>
 
-                    {/* Education */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Education</label>
-                        <Select
-                            options={educationOptions}
-                            value={formData.education}
-                            onChange={(option) => handleSelectChange("education", option)}
-                            className="mt-1"
-                        />
-                    </div>
+                <form onSubmit={handleSubmit} className="grid md:grid-cols-3 gap-8 p-8">
+                    {/* Left Column: Personal Information */}
+                    <div className="md:col-span-2 space-y-8">
+                        {/* Basic Information */}
+                        <section>
+                            <h2 className="text-2xl font-medium text-neutral-800 border-b pb-3 mb-6">Basic Information</h2>
+                            <div className="grid md:grid-cols-2 gap-4">
+                                <FormInput 
+                                    label="First Name" 
+                                    name="firstName" 
+                                    value={formData.firstName} 
+                                    onChange={handleInputChange} 
+                                />
+                                <FormInput 
+                                    label="Last Name" 
+                                    name="lastName" 
+                                    value={formData.lastName} 
+                                    onChange={handleInputChange} 
+                                />
+                                <FormInput 
+                                    label="Date of Birth" 
+                                    name="dateOfBirth" 
+                                    type="date" 
+                                    value={formData.dateOfBirth} 
+                                    onChange={handleInputChange} 
+                                />
+                                <FormSelect 
+                                    label="Gender" 
+                                    name="gender" 
+                                    value={formData.gender} 
+                                    onChange={handleInputChange}
+                                    options={['Male', 'Female', 'Other']}
+                                />
+                                <FormInput 
+                                    label="Height (meters)" 
+                                    name="height" 
+                                    type="number" 
+                                    step="0.01" 
+                                    value={formData.height} 
+                                    onChange={handleInputChange} 
+                                    placeholder="Enter your height in meters"
+                                />
+                                <FormSelect 
+                                    label="Religion" 
+                                    name="religion" 
+                                    value={formData.religion} 
+                                    onChange={handleInputChange}
+                                    options={['Christianity', 'Islam', 'Hinduism','Buddhism','Judaism','Other']}
+                                />       
+                            </div>
+                        </section>
 
-                    {/* Company */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Company</label>
-                        <Select
-                            options={companyOptions}
-                            value={formData.company}
-                            onChange={(option) => handleSelectChange("company", option)}
-                            className="mt-1"
-                        />
-                    </div>
+                        {/* Personal Statement & Goals */}
+                        <section>
+                            <h2 className="text-2xl font-medium text-neutral-800 border-b pb-3 mb-6">About Me</h2>
+                            <div className="space-y-4">
+                                <FormTextarea 
+                                    label="Personal Bio" 
+                                    name="bio" 
+                                    value={formData.bio} 
+                                    onChange={handleInputChange} 
+                                    placeholder="Write a short description about yourself..."
+                                />
+                                <FormSelect 
+                                    label="Relationship Goals" 
+                                    name="goals" 
+                                    value={formData.goals} 
+                                    onChange={handleInputChange}
+                                    options={[
+                                    'Conversation and friendship', 
+                                    'Long-term relationships', 
+                                    'Creating a family', 
+                                    'Casual dating', 
+                                    'Serious relationship',
+                                    'Other'
+                                    ]}
+                                />
+                                <div className="grid md:grid-cols-2 gap-4">
+                                <FormInput 
+                                    label="Occupation Status" 
+                                    name="occupation" 
+                                    value={formData.occupation} 
+                                    onChange={handleInputChange}
+                                    placeholder="You career"
+                                />
+                                <FormSelect 
+                                    label="Professional Status" 
+                                    name="professionalStatus" 
+                                    value={formData.professionalStatus} 
+                                    onChange={handleInputChange}
+                                    options={[
+                                        'Unemployed', 
+                                        'Specialist', 
+                                        'Entrepreneur', 
+                                        'Workman', 
+                                        'Junior manager', 
+                                        'Freelancer/Self-employed', 
+                                        'Student'
+                                    ]}
+                                />
+                                    {/* Work Location */}
+                                    <FormInput
+                                        label="Work Location"
+                                        name="workLocation"
+                                        value={formData.workLocation}
+                                        onChange={handleInputChange}
+                                        placeholder="Enter your work location"
+                                    />
+                                    {/* Nationality */}
+                                    <FormInput
+                                        label="Nationality"
+                                        name="nationality"
+                                        value={formData.nationality}
+                                        onChange={handleInputChange}
+                                        placeholder="Enter your nationality"
+                                    />
 
-                    {/* Position */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Position</label>
-                        <input
-                            type="text"
-                            name="position"
-                            value={formData.position}
-                            onChange={handleChange}
-                            className="mt-1 w-full px-4 py-2 border rounded-md"
-                        />
-                    </div>
-
-                    {/* Hobbies */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Hobbies</label>
-                        <Select
-                            options={hobbyOptions}
-                            isMulti
-                            value={formData.hobbies}
-                            onChange={(option) => handleSelectChange("hobbies", option)}
-                            className="mt-1"
-                        />
-                    </div>
-
-                    {/* Favorite Music */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Favorite Music</label>
-                        <Select
-                            options={musicOptions}
-                            value={formData.favoriteSong}
-                            onChange={(option) => handleSelectChange("favoriteSong", option)}
-                            className="mt-1"
-                        />
-                    </div>
-
-                    {/* Bio */}
-                    <div>
-                        <label className="block text-sm font-medium text-gray-700">Bio</label>
-                        <div className="relative">
-                            <textarea
-                                name="bio"
-                                value={formData.bio || ""}
-                                onChange={handleChange}
-                                rows="4"
-                                placeholder="Describe yourself..."
-                                className="mt-1 w-full px-4 py-2 border rounded-md"
-                            ></textarea>
-                            <button
-                                type="button"
-                                onClick={() => setShowPicker(!showPicker)}
-                                className="absolute right-4 top-2 text-pink-600"
-                            >
-                                😀
-                            </button>
-                            {showPicker && (
-                                <div className="absolute z-10 mt-2 bg-white border rounded-lg shadow-lg">
-                                    <EmojiPicker onEmojiClick={handleEmojiClick} />
+                                    
                                 </div>
-                            )}
-                        </div>
+                            </div>
+                        </section>
+                        <section>
+                            <h2 className="text-2xl font-medium text-neutral-800 border-b pb-3 mb-6">Education</h2>
+
+                            {/* Trình độ học vấn */}
+                            <div className="mb-6">
+                                <label className="block text-neutral-600 text-sm mb-2">Education Level</label>
+                                <select
+                                    name="education"
+                                    value={formData.education}
+                                    onChange={handleEducationChange}
+                                    className="w-full border rounded-lg p-2"
+                                >
+                                    <option value="">Select Level</option>
+                                    <option value="High School">Some college</option>
+                                    <option value="Associate Degree">Associate, bachelor's, or master's degree</option>
+                                    <option value="Bachelor's Degree">Doctoral degree</option>
+                                    <option value="Master's Degree">Vocational high school degree</option>
+                                    <option value="Doctorate (PhD)">More than one academic degree</option>
+                                    <option value="Professional Certification">High school degree</option>
+                                </select>
+                            </div>
+
+                            {/* Danh sách trường học */}
+                            <div className="mb-6">
+                                <label className="block text-neutral-600 text-sm mb-2">Educational Institutions</label>
+                                <div className="flex space-x-2 mb-4">
+                                    <input
+                                        type="text"
+                                        value={newEducationInstitution}
+                                        onChange={(e) => setNewEducationInstitution(e.target.value)}
+                                        placeholder="Add a new institution"
+                                        className="flex-grow border rounded-lg p-2"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={addEducationInstitution}
+                                        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+                                <div className="flex flex-wrap gap-2">
+                                    {formData.educationAt.map((institution, index) => (
+                                        <div
+                                            key={`${institution}-${index}`}
+                                            className="bg-green-100 text-green-800 px-3 py-1 rounded-full flex items-center space-x-2"
+                                        >
+                                            <span>{institution}</span>
+                                            <button
+                                                type="button"
+                                                onClick={() => removeEducationInstitution(institution)}
+                                                className="text-green-500 hover:text-green-700 ml-2"
+                                            >
+                                                ×
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </section>
+
+                        <section>
+                        <h2 className="text-2xl font-medium text-neutral-800 border-b pb-3 mb-6">Life Styles</h2>
+                                <div className="grid md:grid-cols-2 gap-4">
+                                    
+                                    <FormSelect 
+                                    label="Smoking Habits" 
+                                    name="smoking" 
+                                    value={formData.smoking} 
+                                    onChange={handleInputChange}
+                                    options={['Do not smoke', 'Regularly', 'Occasionally']}
+                                />
+                                <FormSelect 
+                                    label="Drinking Habits" 
+                                    name="drinking" 
+                                    value={formData.drinking} 
+                                    onChange={handleInputChange}
+                                    options={['Do not drink', 'Frequently', 'Socially']}
+                                />
+                                <FormSelect 
+                                    label="Children" 
+                                    name="children" 
+                                    value={formData.children} 
+                                    onChange={handleInputChange}
+                                    options={["Don't have children", "Have children"]}
+                                />
+                                <FormSelect 
+                                    label="Children Desire" 
+                                    name="childrenDesire" 
+                                    value={formData.childrenDesire} 
+                                    onChange={handleInputChange}
+                                    options={[
+                                        "I don't want children right now, maybe later", 
+                                        "No, I don't want children", 
+                                        "I would like to have children"
+                                    ]}
+                                />
+                                </div>
+                        </section>
+                        {/* Hobbies */}
+                        <section>
+                            <h2 className="text-2xl font-medium text-neutral-800 border-b pb-3 mb-6">Hobbies</h2>
+                            <div className="flex space-x-2 mb-4">
+                                <input 
+                                    type="text" 
+                                    value={newHobby}
+                                    onChange={(e) => setNewHobby(e.target.value)}
+                                    placeholder="Add a new hobby"
+                                    className="flex-grow border rounded-lg p-2"
+                                />
+                                <button 
+                                    type="button"
+                                    onClick={addHobby}
+                                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+                                >
+                                    Add
+                                </button>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                                {formData.hobbies.map(hobby => (
+                                    <div 
+                                        key={hobby} 
+                                        className="bg-pink-100 text-pink-800 px-3 py-1 rounded-full flex items-center space-x-2"
+                                    >
+                                        {hobby}
+                                        <button 
+                                            type="button"
+                                            onClick={() => removeHobby(hobby)}
+                                            className="text-pink-500 hover:text-pink-700 ml-2"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </section>
                     </div>
 
-                    {/* Buttons */}
-                    <div className="flex space-x-4">
-                        <button
-                            type="submit"
-                            className="bg-pink-600 text-white px-6 py-2 rounded-md hover:bg-pink-700"
-                        >
-                            Save
-                        </button>
-                        <button
-                            type="button"
-                            className="bg-gray-300 text-gray-800 px-6 py-2 rounded-md hover:bg-gray-400"
-                            onClick={() => navigate("/profile")}
-                        >
-                            Cancel
-                        </button>
+                    {/* Right Column: Additional Details */}
+                    <div>
+                        {/* Photos */}
+                        <section className="mb-8">
+                            <h3 className="text-xl font-light text-neutral-800 mb-4 flex items-center">
+                                <Camera className="mr-2 text-neutral-600" />
+                                Profile Photos
+                            </h3>
+                            <div className="grid grid-cols-3 gap-4">
+                                {photos.map((photo, index) => (
+                                    <div key={index} className="relative">
+                                        <img 
+                                            src={photo.url} 
+                                            alt={`Photo ${index + 1}`} 
+                                            className="w-full h-24 object-cover rounded-lg"
+                                        />
+                                        <button 
+                                            type="button"
+                                            onClick={() => removePhoto(index)}
+                                            className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center"
+                                        >
+                                            ×
+                                        </button>
+                                    </div>
+                                ))}
+                                {photos.length < 6 && (
+                                    <label className="border-2 border-dashed border-neutral-300 rounded-lg flex items-center justify-center h-24 cursor-pointer hover:bg-neutral-100">
+                                        <input 
+                                            type="file" 
+                                            accept="image/*" 
+                                            multiple 
+                                            onChange={handlePhotoUpload}
+                                            className="hidden" 
+                                        />
+                                        <Plus className="text-neutral-500" />
+                                    </label>
+                                )}
+                            </div>
+                        </section>
+                        <section className="mb-8">
+                            <h2 className="text-xl font-medium text-neutral-800 border-b pb-2 mb-4">Location Information</h2>
+                            <div className="space-y-3">
+                                <div className="flex space-x-4">
+                                    <FormInput
+                                        label="Latitude"
+                                        name="location.coordinates[0]"
+                                        value={formData.location.coordinates[0] || ''}
+                                        readOnly
+                                        placeholder="Latitude"
+                                        type="number"
+                                        className="flex-1"
+                                    />
+                                    <FormInput
+                                        label="Longitude"
+                                        name="location.coordinates[1]"
+                                        value={formData.location.coordinates[1] || ''}
+                                        readOnly
+                                        placeholder="Longitude"
+                                        type="number"
+                                        className="flex-1"
+                                    />
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-4">
+                                    <FormInput
+                                        label="City"
+                                        name="location.city"
+                                        value={formData.location.city || ''}
+                                        readOnly
+                                        placeholder="City"
+                                    />
+                                    <FormInput
+                                        label="Country"
+                                        name="location.country"
+                                        value={formData.location.country || ''}
+                                        readOnly
+                                        placeholder="Country"
+                                    />
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={handleGetLocation}
+                                    className="w-full bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+                                >
+                                    Get Current Location
+                                </button>
+                        </div>
+                    </section>
+
+
+                        {/* Relationship Preferences */}
+                        <section className="bg-neutral-100 rounded-2xl p-6 space-y-4 mb-8">
+                                <FormSelect 
+                                    label="Relationship Status" 
+                                    name="relationshipStatus" 
+                                    value={formData.relationshipStatus} 
+                                    onChange={handleInputChange}
+                                    options={[
+                                        'Single', 
+                                        'Divorced', 
+                                        'Single parent', 
+                                        'Separated', 
+                                        'In a relationship', 
+                                        'Complicated'
+                                    ]}
+                                />
+                                <FormSelect 
+                                    label="Interested In" 
+                                    name="interestedIn" 
+                                    value={formData.interestedIn} 
+                                    onChange={handleInputChange}
+                                    options={['Male', 'Female', 'Other']}
+                                />
+                            <div className="flex space-x-4">
+                                <FormInput 
+                                    label="Min Age" 
+                                    name="preferenceAgeRange.min" 
+                                    type="number" 
+                                    value={formData.preferenceAgeRange.min} 
+                                    onChange={handleInputChange} 
+                                />
+                                <FormInput 
+                                    label="Max Age" 
+                                    name="preferenceAgeRange.max" 
+                                    type="number" 
+                                    value={formData.preferenceAgeRange.max} 
+                                    onChange={handleInputChange} 
+                                />
+                            </div>
+                        </section>
                     </div>
                 </form>
-            </main>
+            </div>
         </div>
     );
 };
+
+// Reusable Form Input Component
+const FormInput = ({ label, name, type = 'text', value, onChange, placeholder, readOnly = false }) => (
+    <div className="space-y-2 flex-1">
+        <label className="text-neutral-600 text-sm">{label}</label>
+        <input
+            type={type}
+            name={name}
+            value={value}
+            onChange={onChange}
+            placeholder={placeholder}
+            readOnly={readOnly}
+            className={`w-full border rounded-lg p-2 focus:ring-2 focus:ring-blue-200 transition ${
+                readOnly ? 'bg-gray-100' : ''
+            }`}
+        />
+    </div>
+);
+
+
+// Reusable Form Select Component
+const FormSelect = ({ label, name, value, onChange, options }) => (
+    <div className="space-y-2">
+        <label className="text-neutral-600 text-sm">{label}</label>
+        <select 
+            name={name}
+            value={value} 
+            onChange={onChange}
+            className="w-full border border-neutral-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-200 transition"
+        >
+            <option value="">Select {label}</option>
+            {options.map(option => (
+                <option key={option} value={option}>{option}</option>
+            ))}
+        </select>
+    </div>
+);
+
+// Reusable Form Textarea Component
+const FormTextarea = ({ label, name, value, onChange, placeholder }) => (
+    <div className="space-y-2">
+        <label className="text-neutral-600 text-sm">{label}</label>
+        <textarea 
+            name={name}
+            value={value} 
+            onChange={onChange}
+            placeholder={placeholder}
+            rows={4}
+            className="w-full border border-neutral-300 rounded-lg p-2 focus:ring-2 focus:ring-blue-200 transition"
+        />
+    </div>
+);
 
 export default EditProfile;
