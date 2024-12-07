@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
 import { fetchCurrentUser } from '../features/user/userSlice';
 import {
     MapPin, Briefcase, GraduationCap, Heart, Camera,
@@ -10,6 +11,7 @@ import "yet-another-react-lightbox/styles.css";
 
 const Profile = () => {
     const dispatch = useDispatch();
+    const navigate = useNavigate();
     const { user, loading, error } = useSelector((state) => state.user);
     const [isOpen, setIsOpen] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -19,6 +21,9 @@ const Profile = () => {
             dispatch(fetchCurrentUser());
         }
     }, [dispatch, user]);
+    const handleEditClick = () => {
+        navigate('/edit-profile'); // Điều hướng sang trang EditProfile
+    };
 
     if (loading) {
         return (
@@ -83,6 +88,15 @@ const Profile = () => {
                                 <span>{`${location.city}, ${location.country}`}</span>
                             </div>
                         </div>
+                    </div>
+                     {/* Nút Edit Profile */}
+                    <div className="absolute top-4 right-4">
+                        <button
+                            onClick={handleEditClick}
+                            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 shadow-lg"
+                        >
+                            Edit Profile
+                        </button>
                     </div>
                 </div>
 
