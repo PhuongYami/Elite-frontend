@@ -18,6 +18,9 @@ const userApi = {
 
     // Update current user's profile
     updateUserProfile: (data) => axiosInstance.put('/user/profile/update', data),
+    // Update current user's password
+    changePassword: (data) => axiosInstance.put('/user/change-password', data),
+
 };
 
 export default userApi;

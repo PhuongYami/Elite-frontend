@@ -48,12 +48,32 @@ const Profile = () => {
     }
 
     const {
-        firstName, lastName, dateOfBirth, gender, bio, goals,
-        relationshipStatus, preferenceAgeRange, interestedIn,
-        children, childrenDesire, occupation, professionalStatus, workLocation,
-        religion, education, educationAt, height, hobbies, smoking, drinking,
-        nationality, location, photos,
-    } = user.profile;
+        firstName = '',
+        lastName = '',
+        dateOfBirth = '',
+        gender = 'Not specified',
+        bio = 'Not provided',
+        goals = 'Not specified',
+        relationshipStatus = 'Not specified',
+        preferenceAgeRange = { min: 18, max: 50 }, // Giá trị mặc định
+        interestedIn = 'Not specified',
+        children = 'Not specified',
+        childrenDesire = 'Not specified',
+        occupation = 'Not provided',
+        professionalStatus = 'Not specified',
+        workLocation = 'Not specified',
+        religion = 'Not specified',
+        education = 'Not specified',
+        educationAt = [],
+        height = { $numberDecimal: null },
+        hobbies = [],
+        smoking = 'Not specified',
+        drinking = 'Not specified',
+        nationality = 'Not specified',
+        location = { city: 'Not specified', country: 'Not specified' },
+        photos = [],
+    } = user.profile || {};
+    
 
 
     const openLightbox = (index) => {
