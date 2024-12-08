@@ -155,11 +155,11 @@ export const sendPhoneOTP = createAsyncThunk(
 // Verify OTP (Phone)
 export const verifyPhoneOTP = createAsyncThunk(
     'auth/verifyPhoneOTP',
-    async ({ phone, otp }, { rejectWithValue }) =>
+    async ({ phone, otpCode }, { rejectWithValue }) =>
     {
         try
         {
-            const response = await authApi.verifyPhone({ phone, otp });
+            const response = await authApi.verifyPhone({ phone, otpCode });
             return response;
         } catch (error)
         {

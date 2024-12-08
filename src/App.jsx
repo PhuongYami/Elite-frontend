@@ -18,6 +18,7 @@ import ProtectedRoute from "./components/ProtectedRoute";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import GoogleCallbackHandler from "./components/GoogleCallbackHandler"; 
+import AccountInfo from "./pages/AccountInfo";
 
 
 const App = () => {
@@ -116,7 +117,16 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/account-settings"
+          element={
+            <ProtectedRoute>
+              <AccountInfo />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
+      
     </Router>
   );
 };

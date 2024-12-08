@@ -1,5 +1,7 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import userApi from '../../api/userApi';
+import { toast } from 'sonner';
+
 
 // Fetch current user
 export const fetchCurrentUser = createAsyncThunk(
@@ -48,6 +50,20 @@ export const updateUserProfile = createAsyncThunk(
         }
     }
 );
+// Change user password
+export const changePassword = createAsyncThunk(
+    'user/changePassword',
+    async (passwordData, { rejectWithValue }) =>
+    {
+        try
+        {
+            const response = await userApi.changePassword(passwordData);
+            return response.data.message; // Assuming backend returns a success message
+        } catch (error)
+        {
+            return rejectWithValue(error.response?.data?.message || error.message);
+        }
+    });
 
 const userSlice = createSlice({
     name: 'user',
@@ -114,6 +130,23 @@ const userSlice = createSlice({
             {
                 state.loading = false;
                 state.error = action.payload;
+            })
+            // Change password
+            .addCase(changePassword.pending, (state) =>
+            {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(changePassword.fulfilled, (state) =>
+            {
+                state.loading = false;
+                toast.success('Password changed successfully!');
+            })
+            .addCase(changePassword.rejected, (state, action) =>
+            {
+                state.error = action.payload;
+                state.loading = false;
+                toast.error(action.payload || 'Failed to change password');
             });
     },
 });
