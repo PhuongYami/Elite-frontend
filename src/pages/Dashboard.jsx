@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { 
     Activity, Heart, Users, MessageSquare, 
     Zap, TrendingUp, Target, Award, 
-    User, Mail, MapPin, ChevronRight, ChevronLeft
+    User, Mail, MapPin, ChevronRight, ChevronLeft, Loader2
 } from 'lucide-react';
 import { fetchRecommendations } from '../api/searchApi';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { fetchCurrentUser } from '../features/user/userSlice';
+import { debounce } from 'lodash';  // Make sure to install lodash
 
 // Mock Dashboard Data (keeping as fallback)
 const mockDashboardData = {
@@ -32,25 +34,50 @@ const mockDashboardData = {
     ],
 };
 
+const MatchCardSkeleton = () => (
+    <div className="bg-white rounded-2xl shadow-md overflow-hidden animate-pulse">
+        <div className="w-full h-48 bg-neutral-200"></div>
+        <div className="p-4">
+            <div className="h-6 bg-neutral-200 w-3/4 mb-2"></div>
+            <div className="h-4 bg-neutral-200 w-1/2 mb-2"></div>
+            <div className="mt-2 flex flex-wrap gap-2">
+                {[1, 2, 3].map((_, index) => (
+                    <span 
+                        key={index} 
+                        className="bg-neutral-200 text-xs px-2 py-1 rounded-full w-16 h-4"
+                    ></span>
+                ))}
+            </div>
+            <div className="mt-4 flex items-center space-x-2">
+                <div className="flex-1 h-10 bg-neutral-200 rounded-full"></div>
+                <div className="flex-1 h-10 bg-neutral-200 rounded-full"></div>
+            </div>
+        </div>
+    </div>
+);
+
 const Dashboard = () => {
+    const dispatch = useDispatch();
     const [data, setData] = useState(mockDashboardData);
     const [recommendedMatches, setRecommendedMatches] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
+    const [paginationLoading, setPaginationLoading] = useState(false);
     const [error, setError] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalMatches, setTotalMatches] = useState(0);
 
     // Get user ID from Redux store
-    const userId = useSelector(state => state.user.userId);
-     const maxPages = 5; // Tối đa 5 trang
+    const { userId, user } = useSelector(state => state.user);
+    const maxPages = 5; // Maximum 5 pages
 
-    useEffect(() => {
-        const loadRecommendations = async () => {
+    // Debounced recommendation loader
+    const loadRecommendations = useCallback(
+        debounce(async (userId, page) => {
             if (!userId) return;
 
-            setLoading(true);
+            setPaginationLoading(true);
             try {
-                const response = await fetchRecommendations(userId, 3, currentPage);
+                const response = await fetchRecommendations(userId, 3, page);
                 
                 if (response.results && response.results.length > 0) {
                     const apiMatches = response.results.map(match => ({
@@ -69,27 +96,28 @@ const Dashboard = () => {
                 console.error('Error fetching recommendations:', err);
                 setError(err.message || 'Failed to load recommendations');
             } finally {
+                setPaginationLoading(false);
                 setLoading(false);
             }
-        };
+        }, 300),
+        [userId]
+    );
 
-        loadRecommendations();
-    }, [userId, currentPage]);
-
-    const handleNextPage = () => {
-        // Kiểm tra xem còn hồ sơ để hiển thị không
-        if (currentPage * 3 < totalMatches) {
-            setCurrentPage(prev => prev + 1);
+    // Fetch current user and then recommendations
+    useEffect(() => {
+        if (!userId) {
+            dispatch(fetchCurrentUser());
         }
-    };
-    
-    const handlePrevPage = () => {
-        if (currentPage > 1) {
-            setCurrentPage(prev => prev - 1);
-        }
-    };
+    }, [dispatch, userId]);
 
-    // Helper function to calculate age
+    // Load recommendations when user is available
+    useEffect(() => {
+        if (userId) {
+            loadRecommendations(userId, currentPage);
+        }
+    }, [userId, currentPage, loadRecommendations]);
+
+    // Helper functions remain the same as previous implementation
     const calculateAge = (birthDate) => {
         const today = new Date();
         const birth = new Date(birthDate);
@@ -101,12 +129,22 @@ const Dashboard = () => {
         return age;
     };
 
-    // Helper function to format location
     const formatLocation = (location) => {
         if (!location || !location.city || !location.country) return 'Unknown';
         return `${location.city}, ${location.country}`;
     };
 
+    const handleNextPage = () => {
+        if (currentPage * 3 < totalMatches) {
+            setCurrentPage(prev => prev + 1);
+        }
+    };
+    
+    const handlePrevPage = () => {
+        if (currentPage > 1) {
+            setCurrentPage(prev => prev - 1);
+        }
+    };
 
     return (
         <div className="min-h-screen bg-neutral-50 p-8">
@@ -161,34 +199,38 @@ const Dashboard = () => {
 
                 {/* Recommended Matches */}
                 <section className="bg-white rounded-2xl shadow-lg p-6">
-                <div className="flex justify-between items-center border-b pb-3 mb-6">
-            <h2 className="text-2xl font-light text-neutral-800 flex items-center">
-                <Target className="mr-3 text-neutral-600" />
-                Recommended Matches
-            </h2>
-            <div className="flex items-center space-x-2">
-                <button 
-                    onClick={handlePrevPage} 
-                    disabled={currentPage === 1}
-                    className="p-2 bg-neutral-100 rounded-full disabled:opacity-50"
-                >
-                    <ChevronLeft />
-                </button>
-                <span className="text-neutral-600">
-                    Page {currentPage} of {Math.ceil(totalMatches / 3)}
-                </span>
-                <button 
-                    onClick={handleNextPage} 
-                    disabled={currentPage * 3 >= totalMatches}
-                    className="p-2 bg-neutral-100 rounded-full disabled:opacity-50"
-                >
-                    <ChevronRight />
-                </button>
-            </div>
-        </div>
+                    <div className="flex justify-between items-center border-b pb-3 mb-6">
+                        <h2 className="text-2xl font-light text-neutral-800 flex items-center">
+                            <Target className="mr-3 text-neutral-600" />
+                            Recommended Matches
+                        </h2>
+                        <div className="flex items-center space-x-2">
+                            <button 
+                                onClick={handlePrevPage} 
+                                disabled={currentPage === 1 || paginationLoading}
+                                className="p-2 bg-neutral-100 rounded-full disabled:opacity-50"
+                            >
+                                <ChevronLeft />
+                            </button>
+                            <span className="text-neutral-600">
+                                Page {currentPage} of {Math.ceil(totalMatches / 3)}
+                            </span>
+                            <button 
+                                onClick={handleNextPage} 
+                                disabled={currentPage * 3 >= totalMatches || paginationLoading}
+                                className="p-2 bg-neutral-100 rounded-full disabled:opacity-50"
+                            >
+                                <ChevronRight />
+                            </button>
+                        </div>
+                    </div>
                     
                     {loading ? (
-                        <div className="text-center text-neutral-600">Loading recommendations...</div>
+                        <div className="grid md:grid-cols-3 gap-6">
+                            {[1, 2, 3].map((_, index) => (
+                                <MatchCardSkeleton key={index} />
+                            ))}
+                        </div>
                     ) : error ? (
                         <div className="text-center text-red-600">{error}</div>
                     ) : recommendedMatches.length === 0 ? (
@@ -196,10 +238,17 @@ const Dashboard = () => {
                             No recommended matches found. Try updating your profile or preferences.
                         </div>
                     ) : (
-                        <div className="grid md:grid-cols-3 gap-6">
-                            {recommendedMatches.map((match, index) => (
-                                <MatchCard key={match.id || index} match={match} />
-                            ))}
+                        <div className="relative">
+                            {paginationLoading && (
+                                <div className="absolute inset-0 bg-white/50 flex items-center justify-center z-10">
+                                    <Loader2 className="animate-spin text-neutral-600" size={48} />
+                                </div>
+                            )}
+                            <div className={`grid md:grid-cols-3 gap-6 ${paginationLoading ? 'opacity-50' : ''}`}>
+                                {recommendedMatches.map((match, index) => (
+                                    <MatchCard key={match.id || index} match={match} />
+                                ))}
+                            </div>
                         </div>
                     )}
                 </section>

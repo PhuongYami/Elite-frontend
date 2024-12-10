@@ -124,14 +124,15 @@ const UserSection = ({ isAuthenticated, user, onLogout, onLogin, onRegister }) =
                 className="flex items-center space-x-3 cursor-pointer"
                 onClick={toggleDropdown}
               >
+                <span className="hidden md:block text-lm text-neutral-700">
+                  {"Hello, "+ user?.username || 'User'}
+                </span>
                 <img 
                   src={user?.avatar || '/default-avatar.png'} 
                   alt="User Avatar" 
                   className="w-10 h-10 rounded-full object-cover border-2 border-neutral-200" 
                 />
-                <span className="hidden md:block text-sm text-neutral-700">
-                  {user?.username || 'User'}
-                </span>
+                
               </div>
 
               {isDropdownOpen && (
@@ -140,7 +141,7 @@ const UserSection = ({ isAuthenticated, user, onLogout, onLogin, onRegister }) =
                     <img 
                       src={user?.avatar || '/default-avatar.png'} 
                       alt="User Avatar" 
-                      className="w-12 h-12 rounded-full object-cover" 
+                      className="w-10 h-10 rounded-full object-cover border-2 border-neutral-200" 
                     />
                     <div>
                       <p className="text-sm font-medium text-neutral-800">{user?.username}</p>
