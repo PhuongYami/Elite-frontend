@@ -53,7 +53,7 @@ export const fetchAdvancedSearch = async (userId, filters = {}) =>
  * @param {number} [page=1] - Page number for paginated results.
  * @returns {Promise} - A promise resolving to recommended profiles.
  */
-export const fetchRecommendations = async (userId, limit = 10, page = 1) =>
+export const fetchRecommendations = async (userId, limit, page) =>
 {
     try
     {
@@ -61,7 +61,7 @@ export const fetchRecommendations = async (userId, limit = 10, page = 1) =>
             params: {
                 userId,
                 limit,
-                page,
+                page
             },
         });
         return response.data;
