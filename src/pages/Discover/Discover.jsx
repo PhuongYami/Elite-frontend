@@ -2,38 +2,42 @@ import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { Filter, Heart, X, Star, Shuffle, MapPin, Users, GraduationCap, Clock } from 'lucide-react';
 import { fetchBasicSearch } from '../../api/searchApi';
 import { useSelector, useDispatch } from 'react-redux';
-import {fetchCurrentUser } from '../../features/user/userSlice';
+import {fetchCurrentUser,setUserPreferences } from '../../features/user/userSlice';
 
 const Discover = () => {
     const [profiles, setProfiles] = useState([]); 
     const [currentProfileIndex, setCurrentProfileIndex] = useState(0);
     const [showFilters, setShowFilters] = useState(false);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
-    const { user,userId = null } = useSelector((state) => state.user);
+    const { user, userId=null,   userPreferences: { defaultFilters: initialDefaultFilters }  } = useSelector((state) => state.user);
 
     const dispatch = useDispatch();
-    useEffect(() => {
-        if (!userId) {
-            dispatch(fetchCurrentUser());
-        }
-    }, [dispatch, userId]);
+     // Add a default filters object
+     const defaultFilters = useMemo(() => ({
+        ageRange: { min: 20, max: 55 },
+        interestedIn: "Female",
+        location: { lat: 10.61905, lng: 106.614395 },
+        locationRadius: 30,
+    }), []);
     
-    // Tách riêng draft filters để quản lý state
-    const [draftFilters, setDraftFilters] = useState({
-        ageRange: user.profile.preferenceAgeRange,
-        interestedIn: user.profile.interestedIn,
-        location: user.profile.location.coordinates,
-        locationRadius: user.profile.locationRadius,
-    });
+    useEffect(() => {
+        if (user?.profile) {
+            const userFilters = {
+                ageRange: user.profile.preferenceAgeRange || defaultFilters.ageRange,
+                interestedIn: user.profile.interestedIn || defaultFilters.interestedIn,
+                location: user.profile.location?.coordinates || defaultFilters.location,
+                locationRadius: user.profile.locationRadius || defaultFilters.locationRadius,
+            };
+            setDraftFilters(userFilters);
+            setAppliedFilters(userFilters);
+        }
+    }, [user, defaultFilters]);
+    // Use a safer way to initialize draft filters
+    const [draftFilters, setDraftFilters] = useState(defaultFilters);
+    const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
+   
 
-    // Filters thực sự được áp dụng
-    const [appliedFilters, setAppliedFilters] = useState({
-        ageRange: user.profile.preferenceAgeRange,
-        interestedIn: user.profile.interestedIn,
-        location: user.profile.location.coordinates,
-        locationRadius: user.profile.locationRadius,
-    });
 
     // Sử dụng useCallback để tối ưu hóa việc load profiles
     const loadProfiles = useCallback(async () => {
@@ -65,12 +69,14 @@ const Discover = () => {
             setLoading(false);
         }
     }, [appliedFilters, userId]);
-    
-    
-    // Chỉ gọi load profiles khi appliedFilters thay đổi
     useEffect(() => {
-        loadProfiles();
-    }, [loadProfiles]);
+        if (!userId) {
+            dispatch(fetchCurrentUser());
+        } else {
+            loadProfiles(); // Gọi trực tiếp khi có userId
+        }
+    }, [userId, dispatch, loadProfiles]);
+
     
     const calculateAge = (dateOfBirth) => {
         const birthDate = new Date(dateOfBirth);
@@ -102,6 +108,12 @@ const Discover = () => {
     // Áp dụng filters mới
     const applyFilters = () => {
         setAppliedFilters(draftFilters);
+        
+        // Lưu filters vào Redux state
+        dispatch(setUserPreferences({ 
+            defaultFilters: draftFilters 
+        }));
+
         setShowFilters(false);
     };
 
@@ -112,8 +124,14 @@ const Discover = () => {
             location: { lat: 10.61905, lng: 106.614395 },
             locationRadius: 30,
         };
+
         setDraftFilters(defaultFilters);
         setAppliedFilters(defaultFilters);
+
+        // Cập nhật lại default filters trong Redux state
+        dispatch(setUserPreferences({ 
+            defaultFilters 
+        }));
     };
 
     if (loading) {
@@ -405,3 +423,4 @@ const FilterSelect = ({ label, options, value, onChange }) => (
 );
 
 export default Discover;
+

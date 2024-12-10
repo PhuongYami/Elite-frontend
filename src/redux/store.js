@@ -1,40 +1,33 @@
 import { configureStore } from '@reduxjs/toolkit';
-import { persistStore, persistReducer, FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER } from 'redux-persist';
-import storage from 'redux-persist/lib/storage';
-import userReducer from '../features/user/userSlice'; // Correct import path
-import authReducer from '../features/auth/authSlice'; // Correct import path
+import authReducer from '../features/auth/authSlice';
+import userReducer from '../features/user/userSlice';
 
-// Persist configurations
-const userPersistConfig = {
-    key: 'user',
-    storage,
-    whitelist: ['user', 'userId', 'isAuthenticated'],
+// Middleware ví dụ: Thêm token vào headers
+const tokenMiddleware = (storeAPI) => (next) => (action) =>
+{
+    const state = storeAPI.getState();
+    const token = state.auth.token;
+
+    // Nếu action yêu cầu thêm token
+    if (token && action.meta?.auth)
+    {
+        action.meta.headers = {
+            ...action.meta.headers,
+            Authorization: `Bearer ${ token }`,
+        };
+    }
+
+    return next(action);
 };
 
-const authPersistConfig = {
-    key: 'auth',
-    storage,
-    whitelist: ['token', 'user', 'isAuthenticated'],
-};
-
-// Persist reducers
-const persistedUserReducer = persistReducer(userPersistConfig, userReducer);
-const persistedAuthReducer = persistReducer(authPersistConfig, authReducer);
-
-// Store configuration
-export const store = configureStore({
+// Cấu hình store và thêm middleware
+const store = configureStore({
     reducer: {
-        user: persistedUserReducer,
-        auth: persistedAuthReducer,
+        auth: authReducer,
+        user: userReducer,
     },
     middleware: (getDefaultMiddleware) =>
-        getDefaultMiddleware({
-            serializableCheck: {
-                ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-            },
-        }),
+        getDefaultMiddleware().concat(tokenMiddleware),
 });
 
-export const persistor = persistStore(store);
-export default store; // Add this at the bottom
-
+export default store;
