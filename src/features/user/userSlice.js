@@ -71,6 +71,7 @@ const userSlice = createSlice({
         user: null,
         loading: false,
         error: null,
+        userId: null
     },
     reducers: {
         clearError(state)
@@ -91,6 +92,7 @@ const userSlice = createSlice({
             {
                 state.loading = false;
                 state.user = action.payload;
+                state.userId = action.payload._id;
             })
             .addCase(fetchCurrentUser.rejected, (state, action) =>
             {
