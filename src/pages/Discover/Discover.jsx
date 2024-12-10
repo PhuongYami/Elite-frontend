@@ -12,6 +12,7 @@ const Discover = () => {
     const [error, setError] = useState(null);
     const { user, userId=null,   userPreferences: { defaultFilters: initialDefaultFilters }  } = useSelector((state) => state.user);
 
+   
     const dispatch = useDispatch();
      // Add a default filters object
      const defaultFilters = useMemo(() => ({
@@ -36,6 +37,7 @@ const Discover = () => {
     // Use a safer way to initialize draft filters
     const [draftFilters, setDraftFilters] = useState(defaultFilters);
     const [appliedFilters, setAppliedFilters] = useState(defaultFilters);
+    
    
 
 
@@ -89,11 +91,25 @@ const Discover = () => {
         return age;
     };
 
-    const handleSwipe = (action) => {
-        if (profiles.length > 0) {
-            setCurrentProfileIndex((prev) => (prev + 1) % profiles.length);
-        }
-    };
+    const [swipeStack, setSwipeStack] = useState([]);
+
+const handleSwipe = (action) => {
+    if (profiles.length > 0) {
+        const currentProfile = profiles[currentProfileIndex];
+        setSwipeStack((prev) => [...prev, { ...currentProfile, action }]); // Lưu hành động
+
+        setCurrentProfileIndex((prev) => (prev + 1) % profiles.length);
+    }
+};
+
+const undoSwipe = () => {
+    if (swipeStack.length > 0) {
+        const lastSwiped = swipeStack.pop();
+        setProfiles((prev) => [lastSwiped, ...prev]);
+        setCurrentProfileIndex(0);
+    }
+};
+
 
     const toggleFilters = () => setShowFilters(!showFilters);
 
@@ -299,6 +315,13 @@ const Discover = () => {
 
                         {/* Action Buttons - Now positioned at the bottom */}
                         <div className="grid grid-cols-3 gap-4 mt-6">
+                        <button
+                            onClick={undoSwipe}
+                            className="bg-yellow-100 text-yellow-700 py-3 rounded-full hover:bg-yellow-200 transition flex items-center justify-center"
+                        >
+                            <Shuffle size={24} />
+                        </button>
+
                             <button
                                 onClick={() => handleSwipe('skip')}
                                 className="bg-red-100 text-red-700 py-3 rounded-full hover:bg-red-200 transition flex items-center justify-center"

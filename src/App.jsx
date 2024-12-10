@@ -10,7 +10,7 @@ import Dashboard from "./pages/Dashboard";
 import Discover from "./pages/Discover/Discover";
 import Messages from "./pages/Messages";
 import Activities from "./pages/Activities";
-import Search from "./pages/Search";
+import Search from "./pages/AdvancedSearch/Search";
 import OTPVerification from "./pages/OTPVerification";
 import Profile from "./pages/Profile";
 import EditProfile from "./pages/EditProfile";
