@@ -4,6 +4,8 @@
   "private": true,
   "dependencies": {
     "@hookform/resolvers": "^3.9.1",
+    "@mgcrea/antd-place-picker": "^0.4.4",
+    "@react-google-maps/api": "^2.20.3",
     "@reduxjs/toolkit": "^2.3.0",
     "@tanstack/react-query": "^5.61.5",
     "@testing-library/jest-dom": "^5.17.0",
