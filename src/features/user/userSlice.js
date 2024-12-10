@@ -71,13 +71,28 @@ const userSlice = createSlice({
         user: null,
         loading: false,
         error: null,
-        userId: null
+        userId: null,
+        userPreferences: {
+            defaultFilters: {
+                ageRange: { min: 20, max: 55 },
+                interestedIn: "Female",
+                location: { lat: 10.61905, lng: 106.614395 },
+                locationRadius: 30,
+            }
+        }
     },
     reducers: {
         clearError(state)
         {
             state.error = null;
         },
+        setUserPreferences(state, action)
+        {
+            state.userPreferences = {
+                ...state.userPreferences,
+                ...action.payload
+            };
+        }
     },
     extraReducers: (builder) =>
     {
@@ -93,6 +108,16 @@ const userSlice = createSlice({
                 state.loading = false;
                 state.user = action.payload;
                 state.userId = action.payload._id;
+                // Automatically update default filters if user has profile
+                if (action.payload.profile)
+                {
+                    state.userPreferences.defaultFilters = {
+                        ageRange: action.payload.profile.preferenceAgeRange || state.userPreferences.defaultFilters.ageRange,
+                        interestedIn: action.payload.profile.interestedIn || state.userPreferences.defaultFilters.interestedIn,
+                        location: action.payload.profile.location?.coordinates || state.userPreferences.defaultFilters.location,
+                        locationRadius: action.payload.profile.locationRadius || state.userPreferences.defaultFilters.locationRadius,
+                    };
+                }
             })
             .addCase(fetchCurrentUser.rejected, (state, action) =>
             {
@@ -153,5 +178,5 @@ const userSlice = createSlice({
     },
 });
 
-export const { clearError } = userSlice.actions;
+export const { clearError, setUserPreferences } = userSlice.actions;
 export default userSlice.reducer;
