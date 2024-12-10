@@ -12,7 +12,29 @@ const EditProfile = () => {
     const navigate = useNavigate();
     const { user, loading, error } = useSelector((state) => state.user);
 
-
+    const hobbiesEnum = [
+        'Traveling',
+        'Cooking',
+        'Reading',
+        'Sports',
+        'Music',
+        'Photography',
+        'Art and Craft',
+        'Dancing',
+        'Writing',
+        'Gaming',
+        'Hiking',
+        'Fitness and Gym',
+        'Yoga',
+        'Swimming',
+        'Camping',
+        'Socializing',
+        'Wine Tasting',
+        'Watching Movies',
+        'Learning Languages',
+        'Golf',
+    ];
+    
     // State to manage form data
     const [formData, setFormData] = useState({
         // Basic Information
@@ -118,14 +140,17 @@ const EditProfile = () => {
 
     // Add new hobby
     const addHobby = () => {
-        if (newHobby && !formData.hobbies.includes(newHobby)) {
-            setFormData(prev => ({
+        if (newHobby && hobbiesEnum.includes(newHobby) && !formData.hobbies.includes(newHobby)) {
+            setFormData((prev) => ({
                 ...prev,
-                hobbies: [...prev.hobbies, newHobby]
+                hobbies: [...prev.hobbies, newHobby],
             }));
             setNewHobby('');
+        } else if (!hobbiesEnum.includes(newHobby)) {
+            alert('This hobby is not in the allowed list.');
         }
     };
+    
 
     // Remove hobby
     const removeHobby = (hobbyToRemove) => {
@@ -382,12 +407,12 @@ const EditProfile = () => {
                                     className="w-full border rounded-lg p-2"
                                 >
                                     <option value="">Select Level</option>
-                                    <option value="High School">Some college</option>
-                                    <option value="Associate Degree">Associate, bachelor's, or master's degree</option>
-                                    <option value="Bachelor's Degree">Doctoral degree</option>
-                                    <option value="Master's Degree">Vocational high school degree</option>
-                                    <option value="Doctorate (PhD)">More than one academic degree</option>
-                                    <option value="Professional Certification">High school degree</option>
+                                    <option value="Some college">Some college</option>
+                                    <option value="Associate, bachelor's, or master's degree">Associate, bachelor's, or master's degree</option>
+                                    <option value="Doctoral degree">Doctoral degree</option>
+                                    <option value="Vocational high school degree">Vocational high school degree</option>
+                                    <option value="More than one academic degree">More than one academic degree</option>
+                                    <option value="High school degree">High school degree</option>
                                 </select>
                             </div>
 
@@ -470,41 +495,47 @@ const EditProfile = () => {
                         </section>
                         {/* Hobbies */}
                         <section>
-                            <h2 className="text-2xl font-medium text-neutral-800 border-b pb-3 mb-6">Hobbies</h2>
-                            <div className="flex space-x-2 mb-4">
-                                <input 
-                                    type="text" 
-                                    value={newHobby}
-                                    onChange={(e) => setNewHobby(e.target.value)}
-                                    placeholder="Add a new hobby"
-                                    className="flex-grow border rounded-lg p-2"
-                                />
-                                <button 
-                                    type="button"
-                                    onClick={addHobby}
-                                    className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
-                                >
-                                    Add
-                                </button>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                                {formData.hobbies.map(hobby => (
-                                    <div 
-                                        key={hobby} 
-                                        className="bg-pink-100 text-pink-800 px-3 py-1 rounded-full flex items-center space-x-2"
-                                    >
-                                        {hobby}
-                                        <button 
-                                            type="button"
-                                            onClick={() => removeHobby(hobby)}
-                                            className="text-pink-500 hover:text-pink-700 ml-2"
-                                        >
-                                            ×
-                                        </button>
-                                    </div>
-                                ))}
-                            </div>
-                        </section>
+    <h2 className="text-2xl font-medium text-neutral-800 border-b pb-3 mb-6">Hobbies</h2>
+    <div className="flex space-x-2 mb-4">
+        <select
+            value={newHobby}
+            onChange={(e) => setNewHobby(e.target.value)}
+            className="flex-grow border rounded-lg p-2"
+        >
+            <option value="">Select a hobby</option>
+            {hobbiesEnum.map((hobby) => (
+                <option key={hobby} value={hobby}>
+                    {hobby}
+                </option>
+            ))}
+        </select>
+        <button
+            type="button"
+            onClick={addHobby}
+            className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600"
+        >
+            Add
+        </button>
+    </div>
+    <div className="flex flex-wrap gap-2">
+        {formData.hobbies.map((hobby) => (
+            <div
+                key={hobby}
+                className="bg-pink-100 text-pink-800 px-3 py-1 rounded-full flex items-center space-x-2"
+            >
+                {hobby}
+                <button
+                    type="button"
+                    onClick={() => removeHobby(hobby)}
+                    className="text-pink-500 hover:text-pink-700 ml-2"
+                >
+                    ×
+                </button>
+            </div>
+        ))}
+    </div>
+</section>
+
                     </div>
 
                     {/* Right Column: Additional Details */}
