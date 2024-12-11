@@ -4,6 +4,7 @@ import { fetchBasicSearch } from '../../api/searchApi';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchCurrentUser, setUserPreferences } from '../../features/user/userSlice';
 import { createInteraction,undoLastInteraction } from '../../api/interactionApi';
+import { toast } from 'react-toastify';
 
 import ProfileCard from './ProfileCard';
 import ProfileDetails from './ProfileDetails';
@@ -94,16 +95,26 @@ const Discover = () => {
                         type: action === 'superlike' ? 'SuperLike' :
                               action === 'like' ? 'Like' :
                               action === 'dislike' ? 'Dislike':
-                              'nothing'
+                              null
                     };
-                    await createInteraction(interactionData);
+                    const response = await createInteraction(interactionData);
+
+                    // Check if a match is made
+                    if (response.message === 'Matched successfully!') {
+                        toast.success(`You and ${currentProfile.firstName} matched! 🎉`);
+                    }
     
                     // Update local state
                     setSwipeStack((prev) => [...prev, { ...currentProfile, action }]);
                     setCurrentProfileIndex((prev) => (prev + 1) % profiles.length);
                 } else {
                     // Handle undo action
+                    
                     const lastInteraction = swipeStack.pop();
+                    if (!lastInteraction) {
+                        console.warn('No interactions to undo.');
+                        return;
+                    }
                     if (lastInteraction) {
                         // Optionally remove the interaction from backend
                         await undoLastInteraction(userId); // Assuming `undoLastInteraction` API is defined
