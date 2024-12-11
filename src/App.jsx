@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { useDispatch } from "react-redux";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 import { refreshAccessToken, fetchCurrentUser } from "./features/auth/authSlice";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
@@ -51,7 +54,9 @@ const App = () => {
   }
 
   return (
-    <Router>
+<>
+<ToastContainer position="top-right" autoClose={3000} />
+<Router>
       <Navbar />
       <Routes>
         <Route path="/" element={<Home />} />
@@ -128,6 +133,8 @@ const App = () => {
       </Routes>
       
     </Router>
+</>
+    
   );
 };
 
