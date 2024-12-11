@@ -3,6 +3,7 @@ import { Filter, Shuffle } from 'lucide-react';
 import { fetchBasicSearch } from '../../api/searchApi';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchCurrentUser, setUserPreferences } from '../../features/user/userSlice';
+import { createInteraction,undoLastInteraction } from '../../api/interactionApi';
 
 import ProfileCard from './ProfileCard';
 import ProfileDetails from './ProfileDetails';
@@ -80,11 +81,44 @@ const Discover = () => {
         return age;
     };
 
-    const handleSwipe = (action) => {
+    const handleSwipe = async (action) => {
         if (profiles.length > 0) {
             const currentProfile = profiles[currentProfileIndex];
-            setSwipeStack((prev) => [...prev, { ...currentProfile, action }]);
-            setCurrentProfileIndex((prev) => (prev + 1) % profiles.length);
+    
+            try {
+                if (action !== 'undo') {
+                    // Save interaction to backend
+                    const interactionData = {
+                        userFrom: userId,
+                        userTo: currentProfile.userId,
+                        type: action === 'superlike' ? 'SuperLike' :
+                              action === 'like' ? 'Like' :
+                              action === 'dislike' ? 'Dislike':
+                              'nothing'
+                    };
+                    await createInteraction(interactionData);
+    
+                    // Update local state
+                    setSwipeStack((prev) => [...prev, { ...currentProfile, action }]);
+                    setCurrentProfileIndex((prev) => (prev + 1) % profiles.length);
+                } else {
+                    // Handle undo action
+                    const lastInteraction = swipeStack.pop();
+                    if (lastInteraction) {
+                        // Optionally remove the interaction from backend
+                        await undoLastInteraction(userId); // Assuming `undoLastInteraction` API is defined
+                        setSwipeStack([...swipeStack]); // Update state after undoing
+                        setCurrentProfileIndex(
+                            (prev) => (prev - 1 + profiles.length) % profiles.length
+                        );
+                    } else {
+                        console.warn('No interactions to undo');
+                    }
+                }
+            } catch (error) {
+                console.error('Error handling swipe action:', error);
+                // Optionally show error toast/message
+            }
         }
     };
 
@@ -163,7 +197,7 @@ const Discover = () => {
                         <ProfileDetails profile={currentProfile} />
                         <ProfileActionButtons
                             onUndo={() => handleSwipe('undo')}
-                            onSkip={() => handleSwipe('skip')}
+                            onSkip={() => handleSwipe('dislike')}
                             onSuperLike={() => handleSwipe('superlike')}
                             onLike={() => handleSwipe('like')}
                         />
