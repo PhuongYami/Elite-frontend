@@ -19,17 +19,22 @@ let failedQueue = [];
 
 const processQueue = (error, token = null) =>
 {
-    failedQueue.forEach(prom =>
+    failedQueue.forEach((prom) =>
     {
         if (error)
         {
             prom.reject(error);
         } else
         {
-            prom.resolve(token);
+            prom.resolve((config) => ({
+                ...config,
+                headers: {
+                    ...config.headers,
+                    Authorization: `Bearer ${ token }`,
+                },
+            }));
         }
     });
-
     failedQueue = [];
 };
 
@@ -38,12 +43,12 @@ axiosInstance.interceptors.request.use(
     {
         const state = store.getState();
         let token = state.auth.token;
+
         if (config.url.includes('/auth/refresh-token'))
         {
             return config;
         }
 
-        // Only attempt to refresh if token is expired
         if (token && isTokenExpired(token))
         {
             if (!isRefreshing)
@@ -55,33 +60,37 @@ axiosInstance.interceptors.request.use(
                     const response = await authApi.refreshToken();
                     const newToken = response.data.token;
 
-                    // Update token in Redux
                     store.dispatch(setAuth({ token: newToken }));
-
                     processQueue(null, newToken);
                     isRefreshing = false;
 
-                    config.headers.Authorization = `Bearer ${ newToken }`;
+                    return {
+                        ...config,
+                        headers: {
+                            ...config.headers,
+                            Authorization: `Bearer ${ newToken }`,
+                        },
+                    };
                 } catch (error)
                 {
                     processQueue(error, null);
                     store.dispatch(clearAuth());
                     toast.error('Your session has expired. Please log in again.');
                     isRefreshing = false;
-
                     return Promise.reject(error);
                 }
             } else
             {
-                // If refresh is in progress, queue the request
                 return new Promise((resolve, reject) =>
                 {
-                    failedQueue.push({ resolve, reject });
+                    failedQueue.push({
+                        resolve: (configUpdateFn) => resolve(configUpdateFn(config)),
+                        reject,
+                    });
                 });
             }
         }
 
-        // Add token to request if available
         if (token)
         {
             config.headers.Authorization = `Bearer ${ token }`;

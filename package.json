@@ -16,6 +16,7 @@
     "bcryptjs": "^2.4.3",
     "cloudinary": "^2.5.1",
     "cosine-similarity": "^1.0.1",
+    "date-fns": "^4.1.0",
     "dotenv": "^16.4.5",
     "elite_frontend": "file:",
     "emoji-picker-react": "^4.12.0",

@@ -22,6 +22,7 @@ import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import GoogleCallbackHandler from "./components/GoogleCallbackHandler"; 
 import AccountInfo from "./pages/AccountInfo";
+import UserProfile from './pages/UserProfile';
 
 
 const App = () => {
@@ -66,6 +67,7 @@ const App = () => {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/reset-password/:resetToken" element={<ResetPassword />} />
         <Route path="/google-callback/:token" element={<GoogleCallbackHandler />} />
+
         <Route
           path="/dashboard"
           element={
@@ -84,6 +86,14 @@ const App = () => {
         />
         <Route
           path="/messages"
+          element={
+            <ProtectedRoute>
+              <Messages />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/messages/:userId"
           element={
             <ProtectedRoute>
               <Messages />
@@ -130,8 +140,15 @@ const App = () => {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/user-profile/:userId"
+          element={
+            <ProtectedRoute>
+                      <UserProfile />
+            </ProtectedRoute>
+          }
+        />
       </Routes>
-      
     </Router>
 </>
     

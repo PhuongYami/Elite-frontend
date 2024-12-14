@@ -1,18 +1,19 @@
 import React from 'react';
 import { MapPin } from 'lucide-react';
 
-const ProfileCard = ({ profile }) => {
+const ProfileCard = ({ profile, onPhotoClick  }) => {
     return (
         <div className="relative">
             <img
-                src={profile.avatar || 'https://picsum.photos/600/800/'}
+                src={profile.photos[0].url || 'https://picsum.photos/600/800/'}
                 alt={`${profile.firstName}'s profile`}
+                onClick={onPhotoClick}
                 className="w-full h-full object-cover"
             />
             <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black via-transparent p-6 text-white">
                 <div className="flex items-center space-x-2">
                     <h2 className="text-3xl font-thin">
-                        {profile.firstName}, {profile.age}
+                        {profile.firstName} {profile.lastName}, {profile.age}
                     </h2>
                     <div className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-sm">
                         {profile.compatibilityScore}%

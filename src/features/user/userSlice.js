@@ -19,6 +19,21 @@ export const fetchCurrentUser = createAsyncThunk(
     }
 );
 
+// Fetch user profile by ID
+export const fetchUserProfileById = createAsyncThunk(
+    'user/fetchUserProfileById',
+    async (userId, { rejectWithValue }) =>
+    {
+        try
+        {
+            const response = await userApi.getUserById(userId);
+            return response.data.data; // Make sure to return the entire user object
+        } catch (error)
+        {
+            return rejectWithValue(error.response?.data?.message || 'Failed to fetch user profile');
+        }
+    }
+);
 // Update current user
 export const updateUser = createAsyncThunk(
     'user/updateUser',
@@ -92,6 +107,10 @@ const userSlice = createSlice({
                 ...state.userPreferences,
                 ...action.payload
             };
+        },
+        clearUser(state)
+        {
+            state.userId = null;
         }
     },
     extraReducers: (builder) =>
@@ -174,9 +193,26 @@ const userSlice = createSlice({
                 state.error = action.payload;
                 state.loading = false;
                 toast.error(action.payload || 'Failed to change password');
+            })
+            .addCase(fetchUserProfileById.pending, (state) =>
+            {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(fetchUserProfileById.fulfilled, (state, action) =>
+            {
+                state.loading = false;
+                state.user = action.payload;
+                state.error = null;
+            })
+            .addCase(fetchUserProfileById.rejected, (state, action) =>
+            {
+                state.loading = false;
+                state.user = null;
+                state.error = action.payload || 'An error occurred';
             });
     },
 });
 
-export const { clearError, setUserPreferences } = userSlice.actions;
+export const { clearError, setUserPreferences, clearUser } = userSlice.actions;
 export default userSlice.reducer;

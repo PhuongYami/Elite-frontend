@@ -1,9 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     Calendar, MapPin, Users, Heart, Star, 
-    Filter, TrendingUp, Award, Clock 
+    Filter, TrendingUp, Award, Clock , ChevronLeft, ChevronRight
 } from 'lucide-react';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom'; 
 
+// Import new API services
+import { getInteractions } from '../api/interactionApi';
+import { getUserMatches } from '../api/matchingApi.js';
+import { getUserNotifications } from '../api/notificationApi';
+import { fetchCurrentUser} from '../features/user/userSlice.js';
 const mockActivities = [
     {
         id: 1,
@@ -52,9 +59,165 @@ const mockUpcomingEvents = [
 
 const Activities = () => {
     const [activeTab, setActiveTab] = useState('all');
+    const [activities, setActivities] = useState([]);
+    const [matches, setMatches] = useState([]);
+    const [notifications, setNotifications] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [filteredActivities, setFilteredActivities] = useState([]);
+    const { userId, user } = useSelector(state => state.user);
+    const [currentPage, setCurrentPage] = useState(1);
+    const [maxItemsPerPage, setMaxItemsPerPage] = useState(5); // Số mục mỗi trang
+    const [totalItems, setTotalItems] = useState(0);
+    const [pageStates, setPageStates] = useState({
+        all: 1,
+        matches: 1,
+        views: 1,
+        likes: 1
+    });
+    
+    const handleTabChange = (tab) => {
+        setActiveTab(tab);
+        // Reset page to 1 for the new tab
+        setCurrentPage(pageStates[tab] || 1);
+    };
+    const handlePageChange = (newPage) => {
+        setPageStates((prevState) => ({
+            ...prevState,
+            [activeTab]: newPage
+        }));
+        setCurrentPage(newPage);
+    };
+    
+    
+    const dispatch = useDispatch();
+    useEffect(() => {
+        if (!userId) {
+            dispatch(fetchCurrentUser());
+        }
+    }, [dispatch, userId]);
+    useEffect(() => {
+        if (userId) {
+            setActivities([]);
+            setFilteredActivities([]);
+            fetchActivitiesData();
+        }
+    }, [userId]);
+
+    const fetchActivitiesData = async () => {
+        setLoading(true);
+        try {
+            const [interactionsData, matchesData, notificationsResponse] = await Promise.all([
+                getInteractions(userId),
+                getUserMatches(userId),
+                getUserNotifications(userId)
+            ]);
+
+            // Xử lý dữ liệu
+            const transformedInteractions = interactionsData.map((interaction) => ({
+                id: interaction._id,
+                type: interaction.type,
+                icon: getIconForInteraction(interaction.type),
+                title: `${interaction.type} from ${interaction.userTo.username}`,
+                details: `Someone is interested in you!`,
+                timestamp: formatTimestamp(interaction.createdAt)
+            }));
+
+            const transformedMatches = matchesData.map((match) => {
+                // Kiểm tra user1 và user2
+                const otherUser = match.user1._id === userId ? match.user2 : match.user1;
+            
+                return {
+                    id: match._id,
+                    type: 'Match',
+                    icon: <Heart />,
+                    title: `New Match with ${otherUser.username}`, // Lấy tên của đối phương
+                    details: `Compatibility: ${match.compatibilityScore}%`,
+                    timestamp: formatTimestamp(match.matchedAt)
+                };
+            });
+            
+
+            const transformedNotifications = notificationsResponse.notifications.map((notification) => ({
+                id: notification._id,
+                type: notification.type,
+                icon: getIconForNotificationType(notification.type),
+                title: notification.content,
+                details: `${notification.type} Notification`,
+                timestamp: formatTimestamp(notification.createdAt)
+            }));
+
+            const combinedActivities = [
+                ...transformedInteractions,
+                ...transformedMatches,
+                ...transformedNotifications
+            ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+            setActivities(combinedActivities);
+            setLoading(false);
+        } catch (error) {
+            console.error('Error fetching activities:', error);
+            setLoading(false);
+        }
+    };
+    useEffect(() => {
+        const filtered = activities.filter((activity) => {
+            switch (activeTab) {
+                case 'matches':
+                    return activity.type === 'Match';
+                case 'views':
+                    return activity.type === 'View';
+                case 'likes':
+                    return ['Like', 'SuperLike'].includes(activity.type);
+                default:
+                    return true;
+            }
+        });
+    
+        const currentTabPage = pageStates[activeTab] || 1;
+    
+        setTotalItems(filtered.length);
+        setFilteredActivities(
+            filtered.slice((currentTabPage - 1) * maxItemsPerPage, currentTabPage * maxItemsPerPage)
+        );
+    }, [activities, activeTab, pageStates, maxItemsPerPage]);
+    
+    
+    // Helper functions for icon, title, details mapping
+     // Helper functions for icons
+     const getIconForInteraction = (type) => {
+        const icons = {
+            'Like': <Heart />,
+            'SuperLike': <Star />,
+            'View': <TrendingUp />
+        };
+        return icons[type] || <Heart />;
+    };
+
+    const getIconForNotificationType = (type) => {
+        const icons = {
+            'MATCH': <Heart />,
+            'LIKE': <Heart />,
+            'VIEW': <TrendingUp />
+        };
+        return icons[type] || <Heart />;
+    };
+
+    const formatTimestamp = (timestamp) => {
+        const date = new Date(timestamp);
+        const now = new Date();
+        const diffInMilliseconds = now - date;
+        const diffInMinutes = diffInMilliseconds / (1000 * 60);
+        const diffInHours = diffInMinutes / 60;
+        const diffInDays = diffInHours / 24;
+        
+        if (diffInMinutes < 60) return `${Math.round(diffInMinutes)}m ago`;
+        if (diffInHours < 24) return `${Math.round(diffInHours)}h ago`;
+        if (diffInDays < 7) return `${Math.round(diffInDays)}d ago`;
+        return date.toLocaleDateString();
+    };
 
     return (
-        <div className="min-h-screen bg-neutral-50 p-4 sm:p-8">
+         <div className="min-h-screen bg-neutral-50 p-4 sm:p-8">
             <div className="max-w-5xl mx-auto">
                 <div className="flex flex-col sm:flex-row justify-between items-center mb-8">
                     <h1 className="text-3xl sm:text-4xl font-thin text-neutral-800 mb-4 sm:mb-0">Activities</h1>
@@ -63,36 +226,73 @@ const Activities = () => {
                     </button>
                 </div>
 
-                {/* Tabs */}
-                <div className="flex space-x-2 sm:space-x-4 mb-6 bg-white rounded-full p-2 shadow-md">
-                    {['all', 'matches', 'views', 'likes'].map(tab => (
-                        <button
-                            key={tab}
-                            className={`
-                                flex-1 py-2 rounded-full capitalize text-xs sm:text-base
-                                ${activeTab === tab 
-                                    ? 'bg-neutral-800 text-white' 
-                                    : 'text-neutral-600 hover:bg-neutral-100'
-                                }
-                            `}
-                            onClick={() => setActiveTab(tab)}
-                        >
-                            {tab}
-                        </button>
-                    ))}
+               {/* Tabs */}
+               <div className="flex space-x-2 sm:space-x-4 mb-6 bg-white rounded-full p-2 shadow-md">
+               {['all', 'matches', 'views', 'likes'].map((tab) => (
+                    <button
+                        key={tab}
+                        className={`
+                            flex-1 py-2 rounded-full capitalize text-xs sm:text-base
+                            ${activeTab === tab 
+                                ? 'bg-neutral-800 text-white' 
+                                : 'text-neutral-600 hover:bg-neutral-100'
+                            }
+                        `}
+                        onClick={() => handleTabChange(tab)}
+                    >
+                        {tab}
+                    </button>
+                ))}
+
                 </div>
 
-                {/* All Activities */}
+                {/* Activities Section */}
                 <section className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-8">
-                    <h2 className="text-xl sm:text-2xl font-light text-neutral-800 border-b pb-3 mb-6 flex items-center">
-                        <Award className="mr-3 text-neutral-600 w-5 h-5 sm:w-6 sm:h-6" />
-                        Recent Activities
-                    </h2>
-                    <div className="space-y-4">
-                        {mockActivities.map(activity => (
-                            <ActivityItem key={activity.id} activity={activity} />
-                        ))}
+                <div className="flex justify-between items-center border-b pb-3 mb-6">
+                <h2 className="text-xl sm:text-2xl font-light text-neutral-800 flex items-center">
+                    <Award className="mr-3 text-neutral-600 w-5 h-5 sm:w-6 sm:h-6" />
+                    Recent Activities
+                </h2>
+                <div className="flex items-center space-x-4">
+                    <button
+                        onClick={() => handlePageChange(Math.max((pageStates[activeTab] || 1) - 1, 1))}
+                        disabled={(pageStates[activeTab] || 1) === 1}
+                        className="p-2 bg-neutral-100 rounded-full disabled:opacity-50"
+                    >
+                        <ChevronLeft />
+                    </button>
+                    <span className="text-neutral-600">
+                        Page {pageStates[activeTab] || 1} of {Math.ceil(totalItems / maxItemsPerPage)}
+                    </span>
+                    <button
+                        onClick={() =>
+                            handlePageChange(
+                                Math.min((pageStates[activeTab] || 1) + 1, Math.ceil(totalItems / maxItemsPerPage))
+                            )
+                        }
+                        disabled={(pageStates[activeTab] || 1) * maxItemsPerPage >= totalItems}
+                        className="p-2 bg-neutral-100 rounded-full disabled:opacity-50"
+                    >
+                        <ChevronRight />
+                    </button>
+                </div>
+
+            </div>
+
+                <div className="space-y-4">
+                {loading ? (
+                    <div className="text-center text-neutral-600">Loading activities...</div>
+                ) : filteredActivities.length > 0 ? (
+                    filteredActivities.map((activity) => (
+                        <ActivityItem key={activity.id} activity={activity} />
+                    ))
+                ) : (
+                    <div className="text-center text-neutral-500">
+                        No activities found for this category.
                     </div>
+                )}
+            </div>
+
                 </section>
 
                 {/* Upcoming Events */}
@@ -108,20 +308,42 @@ const Activities = () => {
                     </div>
                 </section>
             </div>
+            {/* <section className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-8">
+                {loading ? (
+                    <div>Loading activities...</div>
+                ) : (
+                    activities.map(activity => (
+                        <ActivityItem key={activity.id} activity={activity} />
+                    ))
+                )}
+            </section> */}
         </div>
     );
 };
+const ActivityItem = ({ activity }) => {
+    const navigate = useNavigate();
 
-const ActivityItem = ({ activity }) => (
-    <div className="flex items-center space-x-2 sm:space-x-4 p-3 sm:p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition">
-        <div className="bg-white rounded-full p-2 sm:p-3 shadow-md">{activity.icon}</div>
-        <div className="flex-1">
-            <h3 className="text-sm sm:text-base text-neutral-800 font-medium">{activity.title}</h3>
-            <p className="text-xs sm:text-sm text-neutral-600">{activity.details}</p>
+    const handleActivityClick = () => {
+        if (activity.type === 'Match') {
+            navigate(`/messages/${activity.id}`); // Chuyển sang trang Messages với ID match
+        }
+    };
+
+    return(
+        <div className="flex items-center space-x-2 sm:space-x-4 p-3 sm:p-4 bg-neutral-50 rounded-lg hover:bg-neutral-100 transition"
+        onClick={handleActivityClick}>
+            <div className="bg-white rounded-full p-2 sm:p-3 shadow-md">{activity.icon}</div>
+            <div className="flex-1">
+                <h3 className="text-sm sm:text-base text-neutral-800 font-medium">{activity.title}</h3>
+                <p className="text-xs sm:text-sm text-neutral-600">{activity.details}</p>
+            </div>
+            <span className="text-[10px] sm:text-xs text-neutral-500">{activity.timestamp}</span>
         </div>
-        <span className="text-[10px] sm:text-xs text-neutral-500">{activity.timestamp}</span>
-    </div>
-);
+    );
+
+}
+    
+    
 
 const EventCard = ({ event }) => (
     <div className="bg-neutral-100 rounded-2xl p-4 sm:p-6 hover:shadow-lg transition flex flex-col">
@@ -153,5 +375,7 @@ const EventCard = ({ event }) => (
         </div>
     </div>
 );
+
+
 
 export default Activities;

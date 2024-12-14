@@ -47,7 +47,7 @@ export const getInteractions = async (userId) =>
 {
     try
     {
-        const response = await axiosInstance.get(`/interactions/${ userId }`);
+        const response = await axiosInstance.get(`/interaction/${ userId }`);
         return response.data;
     } catch (error)
     {
@@ -66,7 +66,7 @@ export const getInteractionsBetweenUsers = async (userId, targetUserId) =>
 {
     try
     {
-        const response = await axiosInstance.get(`/interactions/${ userId }/${ targetUserId }`);
+        const response = await axiosInstance.get(`/interaction/${ userId }/${ targetUserId }`);
         return response.data;
     } catch (error)
     {
