@@ -5,33 +5,58 @@ import {
     User, Mail, MapPin, ChevronRight, ChevronLeft, Loader2
 } from 'lucide-react';
 import { fetchRecommendations } from '../api/searchApi';
+import { getInteractions } from '../api/interactionApi';
+import { getUserMatches } from '../api/matchingApi.js';
+import { getUserNotifications } from '../api/notificationApi';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchCurrentUser } from '../features/user/userSlice';
-import { debounce } from 'lodash';  // Make sure to install lodash
+import { debounce } from 'lodash';
+import { toast } from 'sonner';
 
-// Mock Dashboard Data (keeping as fallback)
-const mockDashboardData = {
-    profileViews: 1247,
-    matches: 42,
-    newMessages: 8,
-    profileCompleteness: 85,
-    recentActivity: [
-        { 
-            icon: <User />, 
-            message: 'Your profile was viewed by Emma', 
-            timestamp: '2 hours ago' 
-        },
-        { 
-            icon: <Heart />, 
-            message: 'You matched with Liam', 
-            timestamp: 'Yesterday' 
-        },
-        { 
-            icon: <Mail />, 
-            message: 'New message from Sofia', 
-            timestamp: '3 days ago' 
-        }
-    ],
+// Helper function to get icon for different activity types
+const getActivityIcon = (type) => {
+    const iconMap = {
+        'Match': <Heart />,
+        'Like': <Heart />,
+        'SuperLike': <Award />,
+        'View': <TrendingUp />,
+        'Message': <MessageSquare />,
+        'MATCH': <Heart />,
+        'LIKE': <Heart />,
+        'VIEW': <TrendingUp />
+    };
+    return iconMap[type] || <User />;
+};
+
+// Helper function to format timestamp
+const formatTimestamp = (timestamp) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diffInMilliseconds = now - date;
+    const diffInMinutes = diffInMilliseconds / (1000 * 60);
+    const diffInHours = diffInMinutes / 60;
+    const diffInDays = diffInHours / 24;
+    
+    if (diffInMinutes < 60) return `${Math.round(diffInMinutes)}m ago`;
+    if (diffInHours < 24) return `${Math.round(diffInHours)}h ago`;
+    if (diffInDays < 7) return `${Math.round(diffInDays)}d ago`;
+    return date.toLocaleDateString();
+};
+// Helper functions remain the same as previous implementation
+const calculateAge = (birthDate) => {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+        age--;
+    }
+    return age;
+};
+
+const formatLocation = (location) => {
+    if (!location || !location.city || !location.country) return 'Unknown';
+    return `${location.city}, ${location.country}`;
 };
 
 const MatchCardSkeleton = () => (
@@ -58,23 +83,32 @@ const MatchCardSkeleton = () => (
 
 const Dashboard = () => {
     const dispatch = useDispatch();
-    const [data, setData] = useState(mockDashboardData);
+    const [data, setData] = useState({
+        profileViews: 1247,
+        matches: 42,
+        newMessages: 8,
+        profileCompleteness: 85,
+    });
     const [recommendedMatches, setRecommendedMatches] = useState([]);
+    const [recentActivities, setRecentActivities] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [activitiesLoading, setActivitiesLoading] = useState(true);
     const [paginationLoading, setPaginationLoading] = useState(false);
     const [error, setError] = useState(null);
     const [currentPage, setCurrentPage] = useState(1);
     const [totalMatches, setTotalMatches] = useState(0);
-
-    // Get user ID from Redux store
-    const { userId, user } = useSelector(state => state.user);
-    const maxPages = 5; // Maximum 5 pages
+    const [activitiesPage, setActivitiesPage] = useState(1);
+    const [totalActivities, setTotalActivities] = useState(0);
+     // Get user ID from Redux store
+     const { userId, user } = useSelector(state => state.user);
+     const maxActivitiesPerPage = 4;
+     
 
     // Debounced recommendation loader
     const loadRecommendations = useCallback(
         debounce(async (userId, page) => {
             if (!userId) return;
-
+    
             setPaginationLoading(true);
             try {
                 const response = await fetchRecommendations(userId, 3, page);
@@ -89,7 +123,7 @@ const Dashboard = () => {
                         interests: match.user.interests || [],
                         id: match.user._id
                     }));
-                    setRecommendedMatches(apiMatches);
+                    setRecommendedMatches(prev => apiMatches);
                     setTotalMatches(response.totalMatches || 0);
                 }
             } catch (err) {
@@ -100,39 +134,104 @@ const Dashboard = () => {
                 setLoading(false);
             }
         }, 300),
-        [userId]
+        [calculateAge, formatLocation]  // Thêm dependencies cần thiết
     );
-
     // Fetch current user and then recommendations
     useEffect(() => {
         if (!userId) {
             dispatch(fetchCurrentUser());
         }
     }, [dispatch, userId]);
+    
+ 
+     // Fetch activities with pagination
+     const fetchRecentActivities = useCallback(async (userId, page = 1) => {
+         if (!userId) return;
+ 
+         setActivitiesLoading(true);
+         try {
+             const [
+                 interactionsData, 
+                 matchesData, 
+                 notificationsResponse
+             ] = await Promise.all([
+                 getInteractions(userId),
+                 getUserMatches(userId),
+                 getUserNotifications(userId)
+             ]);
+ 
+             // Transform interactions
+             const transformedInteractions = interactionsData.map(interaction => ({
+                 id: interaction._id,
+                 type: interaction.type,
+                 icon: getActivityIcon(interaction.type),
+                 message: `${interaction.type} from ${interaction.userTo.username}`,
+                 timestamp: formatTimestamp(interaction.createdAt)
+             }));
+ 
+             // Transform matches
+             const transformedMatches = matchesData.map(match => ({
+                 id: match._id,
+                 type: 'Match',
+                 icon: <Heart />,
+                 message: `Matched with a new connection`,
+                 timestamp: formatTimestamp(match.matchedAt)
+             }));
+ 
+             // Transform notifications
+             const filteredNotifications = notificationsResponse.notifications
+                 .filter(notification => notification.type !== 'MATCH')
+                 .map(notification => ({
+                     id: notification._id,
+                     type: notification.type,
+                     icon: getActivityIcon(notification.type),
+                     message: notification.content,
+                     timestamp: formatTimestamp(notification.createdAt)
+                 }));
+ 
+             // Combine and sort activities
+             const combinedActivities = [
+                 ...transformedInteractions,
+                 ...transformedMatches,
+                 ...filteredNotifications
+             ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+ 
+             // Pagination
+             const startIndex = (page - 1) * maxActivitiesPerPage;
+             const paginatedActivities = combinedActivities.slice(startIndex, startIndex + maxActivitiesPerPage);
+ 
+             setRecentActivities(paginatedActivities);
+             setTotalActivities(combinedActivities.length);
+         } catch (err) {
+             console.error('Error fetching activities:', err);
+             setError(err.message || 'Failed to load activities');
+         } finally {
+             setActivitiesLoading(false);
+         }
+     }, []);
 
-    // Load recommendations when user is available
+  // Load recommendations and activities when user is available
     useEffect(() => {
         if (userId) {
             loadRecommendations(userId, currentPage);
+            fetchRecentActivities(userId, activitiesPage);
         }
-    }, [userId, currentPage, loadRecommendations]);
-
-    // Helper functions remain the same as previous implementation
-    const calculateAge = (birthDate) => {
-        const today = new Date();
-        const birth = new Date(birthDate);
-        let age = today.getFullYear() - birth.getFullYear();
-        const monthDiff = today.getMonth() - birth.getMonth();
-        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
-            age--;
+    }, [userId, currentPage, activitiesPage]);
+    // Handlers for activities pagination
+    const handleNextActivitiesPage = () => {
+        if (activitiesPage * maxActivitiesPerPage < totalActivities) {
+            setActivitiesPage(prev => prev + 1);
         }
-        return age;
     };
 
-    const formatLocation = (location) => {
-        if (!location || !location.city || !location.country) return 'Unknown';
-        return `${location.city}, ${location.country}`;
+    const handlePrevActivitiesPage = () => {
+        if (activitiesPage > 1) {
+            setActivitiesPage(prev => prev - 1);
+        }
     };
+
+    
+
 
     const handleNextPage = () => {
         if (currentPage * 3 < totalMatches) {
@@ -179,23 +278,56 @@ const Dashboard = () => {
                     />
                 </div>
 
-                {/* Recent Activity */}
-                <section className="bg-white rounded-2xl shadow-lg p-6 mb-8">
-                    <h2 className="text-2xl font-light text-neutral-800 border-b pb-3 mb-6 flex items-center">
+                 {/* Recent Activity */}
+            <section className="bg-white rounded-2xl shadow-lg p-6 mb-8">
+                <div className="flex justify-between items-center border-b pb-3 mb-6">
+                    <h2 className="text-2xl font-light text-neutral-800 flex items-center">
                         <Zap className="mr-3 text-neutral-600" />
                         Recent Activity
                     </h2>
-                    <div className="space-y-4">
-                        {data.recentActivity.map((activity, index) => (
+                    <div className="flex items-center space-x-2">
+                        <button 
+                            onClick={handlePrevActivitiesPage} 
+                            disabled={activitiesPage === 1 || activitiesLoading}
+                            className="p-2 bg-neutral-100 rounded-full disabled:opacity-50"
+                        >
+                            <ChevronLeft />
+                        </button>
+                        <span className="text-neutral-600">
+                            Page {activitiesPage} of {Math.ceil(totalActivities / maxActivitiesPerPage)}
+                        </span>
+                        <button 
+                            onClick={handleNextActivitiesPage} 
+                            disabled={activitiesPage * maxActivitiesPerPage >= totalActivities || activitiesLoading}
+                            className="p-2 bg-neutral-100 rounded-full disabled:opacity-50"
+                        >
+                            <ChevronRight />
+                        </button>
+                    </div>
+                </div>
+                <div className="space-y-4">
+                    {activitiesLoading ? (
+                        <div className="flex items-center justify-center text-neutral-600">
+                            <Loader2 className="animate-spin mr-2" /> Loading activities...
+                        </div>
+                    ) : error ? (
+                        <div className="text-center text-red-600">{error}</div>
+                    ) : recentActivities.length === 0 ? (
+                        <div className="text-center text-neutral-600">
+                            No recent activities found.
+                        </div>
+                    ) : (
+                        recentActivities.map((activity, index) => (
                             <ActivityItem 
-                                key={index} 
+                                key={activity.id || index} 
                                 icon={activity.icon} 
                                 message={activity.message} 
                                 timestamp={activity.timestamp} 
                             />
-                        ))}
-                    </div>
-                </section>
+                        ))
+                    )}
+                </div>
+            </section>
 
                 {/* Recommended Matches */}
                 <section className="bg-white rounded-2xl shadow-lg p-6">

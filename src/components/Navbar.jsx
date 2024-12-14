@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { logoutUser, fetchCurrentUser } from '../features/auth/authSlice';
+import { clearUser } from '../features/user/userSlice';
 import UserSection from './UserSection';
 import { 
     Compass, MessageSquare, Activity, Search, LayoutDashboard
@@ -24,6 +25,8 @@ const Navbar = () => {
     const handleLogout = async () => {
         try {
             await dispatch(logoutUser()).unwrap();
+            await dispatch(clearUser());
+
             navigate('/login');
         } catch (err) {
             console.error('Logout failed:', err);

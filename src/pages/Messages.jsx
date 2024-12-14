@@ -1,56 +1,189 @@
-import React, { useState } from 'react';
-import { 
-    MessageSquare, Search, MoreVertical, Paperclip, 
-    Send, Video, Phone, Smile, ArrowLeft
+import React, { useState, useEffect, useRef } from 'react';
+import { useSelector, useDispatch } from 'react-redux';
+import { useNavigate } from 'react-router-dom';
+import {
+    MessageSquare, Search, Paperclip, 
+    Send, Video, Phone, Smile, MoreVertical, ArrowLeft
 } from 'lucide-react';
-
-const mockConversations = [
-    {
-        id: 1,
-        name: 'Emma Johnson',
-        avatar: '/api/placeholder/400/400',
-        lastMessage: 'Hey, how are you doing?',
-        timestamp: '2h ago',
-        unread: 3
-    },
-    {
-        id: 2,
-        name: 'Liam Chen',
-        avatar: '/api/placeholder/400/400',
-        lastMessage: 'Looking forward to our date!',
-        timestamp: 'Yesterday',
-        unread: 1
-    },
-    {
-        id: 3,
-        name: 'Sofia Rodriguez',
-        avatar: '/api/placeholder/400/400',
-        lastMessage: 'Thanks for the recommendation!',
-        timestamp: '3d ago',
-        unread: 0
-    }
-];
-
-const mockMessages = [
-    { id: 1, sender: 'Emma Johnson', text: 'Hey, how are you doing?', timestamp: '2h ago', isMe: false },
-    { id: 2, sender: 'Me', text: 'I\'m great! How about you?', timestamp: '2h ago', isMe: true },
-    { id: 3, sender: 'Emma Johnson', text: 'Just planning my weekend. Thinking about hiking.', timestamp: '1h ago', isMe: false },
-];
+import axiosInstance from '../utils/axiosInstance';
+import socket from '../utils/socket.js';
+import { fetchCurrentUser } from '../features/user/userSlice.js';
+import { format } from 'date-fns';
+import { deleteMessage, markMessagesAsRead, fetchMessages, sendMessage } from '../services/messageService.js';
 
 const Messages = () => {
-    const [selectedConversation, setSelectedConversation] = useState(null);
+    const [conversations, setConversations] = useState([]);
+    const [messages, setMessages] = useState([]);
+    const [selectedConversationId, setSelectedConversationId] = useState(null);
     const [messageInput, setMessageInput] = useState('');
+    const [loadingMessages, setLoadingMessages] = useState(false);
+    const [loadingConversations, setLoadingConversations] = useState(true);
+    const [offset, setOffset] = useState(0);
     const [showConversationList, setShowConversationList] = useState(true);
+    const messagesEndRef = useRef(null);
+    const messagesContainerRef = useRef(null);
 
+    const limit = 20;
+    const navigate = useNavigate();
+    const { userId } = useSelector(state => state.user);
+    const dispatch = useDispatch();
+
+    // Scroll to bottom when messages change
+    const scrollToBottom = () => {
+        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    useEffect(scrollToBottom, [messages]);
+
+    // Fetch current user
+    useEffect(() => {
+        if (!userId) {
+            dispatch(fetchCurrentUser());
+        }
+    }, [dispatch, userId]);
+
+    // Reset state when userId changes
+    useEffect(() => {
+        if (userId) {
+            setConversations([]);
+            setMessages([]);
+            setSelectedConversationId(null);
+            fetchConversations();
+        }
+    }, [userId]);
+
+    // Socket message handling
+    useEffect(() => {
+        const handleReceiveMessage = (newMessage) => {
+            setMessages((prevMessages) => {
+                const isDuplicate = prevMessages.some(msg => msg.original_id === newMessage._id);
+                
+                if (isDuplicate) {
+                    return prevMessages;
+                }
+
+                const uniqueMessage = {
+                    ...newMessage,
+                    original_id: newMessage._id,
+                    sent_at: new Date(newMessage.createdAt).toISOString(),
+                };
+
+                return [...prevMessages, uniqueMessage];
+            });
+
+            setConversations((prevConversations) =>
+                prevConversations.map((conversation) =>
+                    conversation._id === newMessage.conversation
+                        ? { ...conversation, last_message: newMessage }
+                        : conversation
+                )
+            );
+        };
+
+        socket.on('receiveMessage', handleReceiveMessage);
+
+        return () => {
+            socket.off('receiveMessage', handleReceiveMessage);
+        };
+    }, [selectedConversationId]);
+
+    // Fetch conversations
+    const fetchConversations = async () => {
+        setLoadingConversations(true);
+        try {
+            const response = await axiosInstance.get('/conversations');
+            if (response.data.success) {
+                setConversations(response.data.conversations);
+            }
+        } catch (error) {
+            console.error('Error fetching conversations:', error);
+        } finally {
+            setLoadingConversations(false);
+        }
+    };
+
+    // Fetch messages for conversation
+    const fetchMessages = async (conversationId, limit = 20, offset = 0) => {
+        setLoadingMessages(true);
+        try {
+            const response = await axiosInstance.get(`/conversations/messages/${conversationId}`, {
+                params: { limit, offset },
+            });
+
+            if (response.data.success) {
+                setMessages((prevMessages) => [...response.data.messages, ...prevMessages]);
+            }
+        } catch (error) {
+            console.error('Error fetching messages:', error);
+        } finally {
+            setLoadingMessages(false);
+        }
+    };
+
+    // Handle conversation selection
     const handleConversationSelect = (conversationId) => {
-        setSelectedConversation(conversationId);
+        setSelectedConversationId(conversationId);
+        fetchMessages(conversationId);
+        socket.emit('joinConversation', conversationId);
         setShowConversationList(false);
+        if (window.innerWidth < 768) {
+            setShowConversationList(false);
+        }
+    };
+
+    // Send message
+    const handleSendMessage = async () => {
+        if (!messageInput.trim()) return;
+
+        try {
+            const selectedConversation = conversations.find((c) => c._id === selectedConversationId);
+            const receiverId = selectedConversation.participants.find((p) => p._id !== userId)?._id;
+
+            const response = await axiosInstance.post('/conversations/send', {
+                conversationId: selectedConversationId,
+                content: messageInput,
+                message_type: 'text',
+                receiver: receiverId,
+            });
+
+            if (response.data.success) {
+                const newMessage = {
+                    ...response.data.message,
+                    original_id: response.data.message._id
+                };
+
+                socket.emit('sendMessage', {
+                    conversationId: selectedConversationId,
+                    message: newMessage,
+                });
+
+                setMessages((prevMessages) => {
+                    const isDuplicate = prevMessages.some(msg => msg.original_id === newMessage._id);
+                    return isDuplicate ? prevMessages : [...prevMessages, newMessage];
+                });
+
+                setMessageInput('');
+            }
+        } catch (error) {
+            console.error('Error sending message:', error);
+        }
     };
 
     const handleBackToConversations = () => {
         setShowConversationList(true);
-        setSelectedConversation(null);
+        setSelectedConversationId(null);
+        setMessages([]);
     };
+    const handleDeleteMessage = (messageId) => {
+        deleteMessage(messageId, setMessages);
+    };
+    useEffect(() => {
+        if (messages.length && selectedConversationId) {
+            markMessagesAsRead(messages, userId, setMessages);
+        }
+    }, [messages, selectedConversationId, userId]);
+    
+    
 
     return (
         <div className="min-h-screen bg-neutral-50 flex flex-col md:flex-row">
@@ -78,25 +211,30 @@ const Messages = () => {
                 </div>
 
                 <div className="space-y-4">
-                    {mockConversations.map(conversation => (
-                        <ConversationItem 
-                            key={conversation.id} 
-                            conversation={conversation}
-                            isSelected={selectedConversation === conversation.id}
-                            onClick={() => handleConversationSelect(conversation.id)}
-                        />
-                    ))}
+                    {loadingConversations ? (
+                        <p>Loading conversations...</p>
+                    ) : (
+                        conversations.map((conversation) => (
+                            <ConversationItem
+                                key={conversation._id}
+                                conversation={conversation}
+                                isSelected={selectedConversationId === conversation._id}
+                                onClick={() => handleConversationSelect(conversation._id)}
+                                currentUserId={userId}
+                            />
+                        ))
+                    )}
                 </div>
             </div>
 
             {/* Chat Window */}
             <div 
                 className={`
-                    flex-1 flex flex-col 
+                    flex-1 flex flex-col  
                     ${!showConversationList ? 'block' : 'hidden md:flex'}
                 `}
             >
-                {selectedConversation ? (
+                {selectedConversationId ? (
                     <>
                         {/* Mobile Back Button */}
                         <div className="md:hidden bg-white border-b border-neutral-200 p-4 flex items-center">
@@ -106,50 +244,32 @@ const Messages = () => {
                             >
                                 <ArrowLeft />
                             </button>
-                            <div className="flex items-center space-x-3">
-                                <img 
-                                    src="/api/placeholder/400/400" 
-                                    alt="User Avatar" 
-                                    className="w-10 h-10 rounded-full object-cover"
-                                />
-                                <div>
-                                    <h3 className="text-base font-light text-neutral-800">Emma Johnson</h3>
-                                    <p className="text-xs text-neutral-500">Active now</p>
-                                </div>
-                            </div>
+                            {renderChatHeader(conversations, selectedConversationId, userId)}
                         </div>
 
                         {/* Desktop Header */}
                         <div className="hidden md:flex bg-white border-b border-neutral-200 p-6 justify-between items-center">
-                            <div className="flex items-center space-x-4">
-                                <img 
-                                    src="/api/placeholder/400/400" 
-                                    alt="User Avatar" 
-                                    className="w-12 h-12 rounded-full object-cover"
-                                />
-                                <div>
-                                    <h3 className="text-xl font-light text-neutral-800">Emma Johnson</h3>
-                                    <p className="text-sm text-neutral-500">Active now</p>
-                                </div>
-                            </div>
-                            <div className="flex space-x-4">
-                                <button className="text-neutral-600 hover:text-neutral-800">
-                                    <Phone />
-                                </button>
-                                <button className="text-neutral-600 hover:text-neutral-800">
-                                    <Video />
-                                </button>
-                                <button className="text-neutral-600 hover:text-neutral-800">
-                                    <MoreVertical />
-                                </button>
-                            </div>
+                            {renderChatHeader(conversations, selectedConversationId, userId, true)}
                         </div>
 
                         {/* Messages Container */}
-                        <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4">
-                            {mockMessages.map(message => (
-                                <MessageBubble key={message.id} message={message} />
+                        <div 
+                            ref={messagesContainerRef}
+                            className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 messages-container"
+                        >
+                            {loadingMessages && offset > 0 ? (
+                                <p>Loading more messages...</p>
+                            ) : null}
+                            {messages.map((message) => (
+                               <MessageBubble 
+                               key={message._id} 
+                               message={message} 
+                               currentUserId={userId} 
+                               onDelete={handleDeleteMessage}
+                           />
+                           
                             ))}
+                            <div ref={messagesEndRef} />
                         </div>
 
                         {/* Message Input */}
@@ -166,10 +286,12 @@ const Messages = () => {
                                     placeholder="Type a message..." 
                                     value={messageInput}
                                     onChange={(e) => setMessageInput(e.target.value)}
+                                    onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                                     className="flex-1 border border-neutral-200 rounded-full px-3 py-2 md:px-4 md:py-2 text-sm focus:outline-none focus:ring-2 focus:ring-neutral-300"
                                 />
                                 <button 
                                     className="bg-neutral-800 text-white rounded-full p-2 md:p-3 hover:bg-neutral-700"
+                                    onClick={handleSendMessage}
                                     disabled={!messageInput}
                                 >
                                     <Send size={18} />
@@ -189,54 +311,120 @@ const Messages = () => {
     );
 };
 
-const ConversationItem = ({ conversation, isSelected, onClick }) => (
-    <div 
-        className={`
-            flex items-center space-x-3 md:space-x-4 p-3 md:p-4 rounded-lg cursor-pointer 
-            ${isSelected 
-                ? 'bg-neutral-100' 
-                : 'hover:bg-neutral-50'
-            }
-        `}
+// Chat header rendering function
+const renderChatHeader = (conversations, selectedConversationId, currentUserId, isDesktop = false) => {
+    const selectedConversation = conversations.find(c => c._id === selectedConversationId);
+    const otherParticipants = selectedConversation?.participants.filter(p => p._id !== currentUserId) || [];
+    const otherUsername = otherParticipants.map(p => p.username).join(', ');
+    const otherAvatar = otherParticipants[0]?.avatar || '/placeholder.jpg';
+
+    const headerClasses = isDesktop 
+        ? "flex items-center space-x-4" 
+        : "flex items-center space-x-3";
+
+    const avatarClasses = isDesktop 
+        ? "w-12 h-12 rounded-full object-cover"
+        : "w-10 h-10 rounded-full object-cover";
+
+    const nameClasses = isDesktop 
+        ? "text-xl font-light text-neutral-800"
+        : "text-base font-light text-neutral-800";
+
+    return (
+        <div className="flex items-center justify-between w-full">
+            <div className={headerClasses}>
+                <img 
+                    src={otherAvatar} 
+                    alt="User Avatar" 
+                    className={avatarClasses}
+                />
+                <div>
+                    <h3 className={nameClasses}>{otherUsername}</h3>
+                    <p className="text-sm text-neutral-500">Active now</p>
+                </div>
+            </div>
+            {isDesktop && (
+                <div className="flex space-x-4">
+                    <button className="text-neutral-600 hover:text-neutral-800">
+                        <Phone />
+                    </button>
+                    <button className="text-neutral-600 hover:text-neutral-800">
+                        <Video />
+                    </button>
+                    <button className="text-neutral-600 hover:text-neutral-800">
+                        <MoreVertical />
+                    </button>
+                </div>
+            )}
+        </div>
+    );
+};
+
+const ConversationItem = ({ conversation, isSelected, onClick, currentUserId }) => (
+    <div
+        className={`flex items-center space-x-4 p-4 rounded-lg cursor-pointer ${
+            isSelected ? 'bg-neutral-100' : 'hover:bg-neutral-50'
+        }`}
         onClick={onClick}
     >
-        <img 
-            src={conversation.avatar} 
-            alt={conversation.name} 
-            className="w-10 h-10 md:w-12 md:h-12 rounded-full object-cover"
+        <img
+            src={conversation.participants.find(p => p._id !== currentUserId)?.avatar || '/placeholder.jpg'}
+            alt="Avatar"
+            className="w-12 h-12 rounded-full object-cover"
         />
         <div className="flex-1">
             <div className="flex justify-between items-center">
-                <h4 className="text-sm md:text-base text-neutral-800 font-medium">{conversation.name}</h4>
-                <span className="text-[10px] md:text-xs text-neutral-500">{conversation.timestamp}</span>
+                <h4 className="text-sm md:text-base text-neutral-800 font-medium">
+                    {conversation.participants
+                        .filter(p => p._id !== currentUserId)
+                        .map(p => p.username)
+                        .join(', ')}
+                </h4>
+                <span className="text-[10px] md:text-xs text-neutral-500">
+                    {conversation.last_message 
+                        ? new Date(conversation.last_message.sent_at).toLocaleTimeString() 
+                        : ''}
+                </span>
             </div>
-            <div className="flex justify-between items-center">
-                <p className="text-xs md:text-sm text-neutral-600 truncate">{conversation.lastMessage}</p>
-                {conversation.unread > 0 && (
-                    <span className="bg-neutral-800 text-white text-[10px] md:text-xs rounded-full px-1.5 py-0.5 md:px-2 md:py-1">
-                        {conversation.unread}
-                    </span>
-                )}
-            </div>
+            <p className="text-xs md:text-sm text-neutral-600 truncate">
+                {conversation.last_message?.content?.slice(0, 30) || 'No messages yet'}
+                {conversation.last_message?.content?.length > 30 ? '...' : ''}
+            </p>
         </div>
     </div>
 );
 
-const MessageBubble = ({ message }) => (
-    <div className={`flex ${message.isMe ? 'justify-end' : 'justify-start'}`}>
-        <div 
-            className={`
-                max-w-[250px] md:max-w-md p-3 md:p-4 rounded-2xl 
-                ${message.isMe 
-                    ? 'bg-neutral-800 text-white' 
-                    : 'bg-neutral-100 text-neutral-800'
-                }
-            `}
-        >
-            <p className="text-xs md:text-sm">{message.text}</p>
-            <p className="text-[10px] md:text-xs mt-1 md:mt-2 opacity-60">{message.timestamp}</p>
+const MessageBubble = ({ message, currentUserId, onDelete }) => {
+    const statusLabel = message.status === 'read' ? '✔✔' 
+        : message.status === 'delivered' ? '✔' 
+        : '';
+
+    return (
+        <div className={`flex ${message.sender === currentUserId ? 'justify-end' : 'justify-start'}`}>
+            <div
+                className={`relative max-w-[250px] md:max-w-md p-3 md:p-4 rounded-2xl ${
+                    message.sender === currentUserId 
+                        ? 'bg-neutral-800 text-white' 
+                        : 'bg-neutral-100 text-neutral-800'
+                }`}
+            >
+                <p className="text-xs md:text-sm">{message.content}</p>
+                <p className="text-[10px] md:text-xs mt-1 md:mt-2 opacity-60">
+                    {format(new Date(message.sent_at), 'hh:mm:ss a')} {statusLabel}
+                </p>
+                {currentUserId === message.sender && (
+                    <button 
+                        onClick={() => onDelete(message._id)} 
+                        className="absolute top-2 right-2 text-neutral-500 hover:text-red-500"
+                    >
+                        <MoreVertical size={16} />
+                    </button>
+                )}
+            </div>
         </div>
-    </div>
-);
+    );
+};
+
+
 
 export default Messages;
