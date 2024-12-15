@@ -1,56 +1,110 @@
-import React, { useState } from "react";
-import { useDispatch, useSelector } from "react-redux";
-import { forgotPassword, clearError, clearMessage } from "../features/auth/authSlice";
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { forgotPassword, clearError, clearMessage } from '../features/auth/authSlice';
+import { useNavigate } from 'react-router-dom';
+import { Mail, Activity } from 'lucide-react';
 
 const ForgotPassword = () => {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
   const { loading, error, message } = useSelector((state) => state.auth);
 
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  useEffect(() => {
     dispatch(clearError());
     dispatch(clearMessage());
-    dispatch(forgotPassword({ email }));
+  }, [dispatch]);
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    dispatch(forgotPassword({ email })).then((result) => {
+      if (result.meta.requestStatus === 'fulfilled') {
+        // Optionally, you could add a success state or redirect
+      }
+    });
   };
 
   return (
-    <div className="flex justify-center items-center h-screen bg-pink-100">
-      <div className="w-full max-w-md bg-white rounded-lg shadow-lg p-6">
-        <h1 className="text-2xl font-bold text-gray-800 text-center mb-4">Quên Mật Khẩu</h1>
-        {message && <p className="text-green-600 text-center mb-4">{message}</p>}
-        {error && <p className="text-red-600 text-center mb-4">{error}</p>}
-        <p className="text-center text-gray-600 mb-6">
-          Nhập email của bạn để nhận liên kết đặt lại mật khẩu.
-        </p>
-        <form onSubmit={handleSubmit}>
-          <div className="mb-4">
-            <input
-              type="email"
-              placeholder="Nhập email của bạn"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-              className="w-full px-4 py-2 border rounded-md focus:ring-pink-500"
-            />
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-8">
+      <div className="w-full max-w-lg">
+        <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
+          {/* Header */}
+          <div className="text-center">
+            <h1 className="text-4xl font-thin text-neutral-800 mb-2 flex items-center justify-center">
+              Forgot Password
+            </h1>
+            <p className="text-neutral-600 mb-6">
+              Enter your email to reset your password
+            </p>
           </div>
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full bg-pink-600 text-white py-2 px-4 rounded-md ${
-              loading ? "opacity-50" : "hover:bg-pink-700"
-            }`}
-          >
-            {loading ? "Đang gửi..." : "Gửi Liên Kết"}
-          </button>
-        </form>
-        <p className="text-center text-gray-600 mt-4">
-          Nhớ mật khẩu?{" "}
-          <a href="/login" className="text-pink-600 hover:underline">
-            Đăng Nhập
-          </a>
-        </p>
+
+          {/* Success Message */}
+          {message && (
+            <div className="text-green-600 bg-green-50 border border-green-300 rounded-lg p-4 text-center">
+              {message}
+            </div>
+          )}
+
+          {/* Error Notification */}
+          {error && (
+            <div className="text-red-600 bg-red-50 border border-red-300 rounded-lg p-4 text-center">
+              {error}
+            </div>
+          )}
+
+          {/* Forgot Password Form */}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Email Input */}
+            <div>
+              <label htmlFor="email" className="block text-sm font-medium text-neutral-700 mb-2">
+                Email Address
+              </label>
+              <div className="relative">
+                <Mail className="absolute left-3 top-3 text-neutral-400" size={18} />
+                <input
+                  type="email"
+                  id="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="Enter your email"
+                  required
+                  className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full py-3 rounded-lg font-medium text-white transition ${
+                loading
+                  ? 'bg-neutral-400 cursor-not-allowed'
+                  : 'bg-neutral-800 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-500'
+              }`}
+            >
+              {loading ? 'Sending Reset Link...' : 'Reset Password'}
+            </button>
+          </form>
+
+          {/* Back to Login */}
+          <p className="text-center text-sm text-neutral-600">
+            Remember your password?{' '}
+            <button
+              onClick={() => navigate('/login')}
+              className="text-blue-600 hover:underline font-medium"
+            >
+              Back to Login
+            </button>
+          </p>
+        </div>
+
+        {/* Additional Decorative Element */}
+        <div className="mt-8 text-center flex justify-center items-center text-neutral-500">
+          <Activity className="mr-2" size={20} />
+          Secure Reset • Protected Data
+        </div>
       </div>
     </div>
   );

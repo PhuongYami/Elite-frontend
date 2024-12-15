@@ -13,7 +13,7 @@ const GoogleLoginButton = () => {
         onClick={handleGoogleLogin}
         className="bg-red-500 text-white px-6 py-2 rounded-md hover:bg-red-600 transition duration-300"
       >
-        Đăng nhập bằng Google
+        Login by Google
       </button>
     </div>
   );

@@ -9,7 +9,7 @@ import axiosInstance from '../utils/axiosInstance';
 import socket from '../utils/socket.js';
 import { fetchCurrentUser } from '../features/user/userSlice.js';
 import { format } from 'date-fns';
-import { deleteMessage, markMessagesAsRead, fetchMessages, sendMessage } from '../services/messageService.js';
+import { deleteMessage, markMessagesAsRead } from '../services/messageService.js';
 
 const Messages = () => {
     const [conversations, setConversations] = useState([]);
@@ -21,7 +21,7 @@ const Messages = () => {
     const [offset, setOffset] = useState(0);
     const [showConversationList, setShowConversationList] = useState(true);
     const messagesEndRef = useRef(null);
-    const messagesContainerRef = useRef(null);
+    const [messagesByConversation, setMessagesByConversation] = useState({});
 
     const limit = 20;
     const navigate = useNavigate();
@@ -41,6 +41,11 @@ const Messages = () => {
             dispatch(fetchCurrentUser());
         }
     }, [dispatch, userId]);
+    useEffect(() => {
+        if (messages.length && selectedConversationId) {
+            markMessagesAsRead(messages, userId, setMessages);
+        }
+    }, [messages, selectedConversationId, userId]);
 
     // Reset state when userId changes
     useEffect(() => {
@@ -55,20 +60,11 @@ const Messages = () => {
     // Socket message handling
     useEffect(() => {
         const handleReceiveMessage = (newMessage) => {
+            if (newMessage.conversation !== selectedConversationId) return;
+
             setMessages((prevMessages) => {
-                const isDuplicate = prevMessages.some(msg => msg.original_id === newMessage._id);
-                
-                if (isDuplicate) {
-                    return prevMessages;
-                }
-
-                const uniqueMessage = {
-                    ...newMessage,
-                    original_id: newMessage._id,
-                    sent_at: new Date(newMessage.createdAt).toISOString(),
-                };
-
-                return [...prevMessages, uniqueMessage];
+                const isDuplicate = prevMessages.some((msg) => msg._id === newMessage._id);
+                return isDuplicate ? prevMessages : [...prevMessages, newMessage];
             });
 
             setConversations((prevConversations) =>
@@ -86,6 +82,7 @@ const Messages = () => {
             socket.off('receiveMessage', handleReceiveMessage);
         };
     }, [selectedConversationId]);
+    
 
     // Fetch conversations
     const fetchConversations = async () => {
@@ -109,9 +106,15 @@ const Messages = () => {
             const response = await axiosInstance.get(`/conversations/messages/${conversationId}`, {
                 params: { limit, offset },
             });
-
+    
             if (response.data.success) {
-                setMessages((prevMessages) => [...response.data.messages, ...prevMessages]);
+                setMessagesByConversation((prevState) => ({
+                    ...prevState,
+                    [conversationId]: [
+                        ...(prevState[conversationId] || []), // Keep existing messages for the conversation
+                        ...response.data.messages,
+                    ],
+                }));
             }
         } catch (error) {
             console.error('Error fetching messages:', error);
@@ -123,9 +126,13 @@ const Messages = () => {
     // Handle conversation selection
     const handleConversationSelect = (conversationId) => {
         setSelectedConversationId(conversationId);
-        fetchMessages(conversationId);
+    
+        // Fetch messages only if not already loaded for the selected conversation
+        if (!messagesByConversation[conversationId]) {
+            fetchMessages(conversationId);
+        }
+    
         socket.emit('joinConversation', conversationId);
-        setShowConversationList(false);
         if (window.innerWidth < 768) {
             setShowConversationList(false);
         }
@@ -147,10 +154,7 @@ const Messages = () => {
             });
 
             if (response.data.success) {
-                const newMessage = {
-                    ...response.data.message,
-                    original_id: response.data.message._id
-                };
+                const newMessage = response.data.message;
 
                 socket.emit('sendMessage', {
                     conversationId: selectedConversationId,
@@ -158,7 +162,7 @@ const Messages = () => {
                 });
 
                 setMessages((prevMessages) => {
-                    const isDuplicate = prevMessages.some(msg => msg.original_id === newMessage._id);
+                    const isDuplicate = prevMessages.some((msg) => msg._id === newMessage._id);
                     return isDuplicate ? prevMessages : [...prevMessages, newMessage];
                 });
 
@@ -174,16 +178,31 @@ const Messages = () => {
         setSelectedConversationId(null);
         setMessages([]);
     };
+
     const handleDeleteMessage = (messageId) => {
         deleteMessage(messageId, setMessages);
     };
+
+    const handleReceiveMessage = (newMessage) => {
+        setMessagesByConversation((prevState) => {
+            const conversationMessages = prevState[newMessage.conversation] || [];
+            const isDuplicate = conversationMessages.some((msg) => msg._id === newMessage._id);
+    
+            if (isDuplicate) return prevState;
+    
+            return {
+                ...prevState,
+                [newMessage.conversation]: [...conversationMessages, newMessage],
+            };
+        });
+    };
+    
+    // Update messages displayed based on selected conversation
     useEffect(() => {
-        if (messages.length && selectedConversationId) {
-            markMessagesAsRead(messages, userId, setMessages);
+        if (selectedConversationId) {
+            setMessages(messagesByConversation[selectedConversationId] || []);
         }
-    }, [messages, selectedConversationId, userId]);
-    
-    
+    }, [selectedConversationId, messagesByConversation]);
 
     return (
         <div className="min-h-screen bg-neutral-50 flex flex-col md:flex-row">
@@ -254,20 +273,18 @@ const Messages = () => {
 
                         {/* Messages Container */}
                         <div 
-                            ref={messagesContainerRef}
                             className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 messages-container"
                         >
                             {loadingMessages && offset > 0 ? (
                                 <p>Loading more messages...</p>
                             ) : null}
                             {messages.map((message) => (
-                               <MessageBubble 
-                               key={message._id} 
-                               message={message} 
-                               currentUserId={userId} 
-                               onDelete={handleDeleteMessage}
-                           />
-                           
+                                <MessageBubble 
+                                    key={message._id} 
+                                    message={message} 
+                                    currentUserId={userId} 
+                                    onDelete={handleDeleteMessage}
+                                />
                             ))}
                             <div ref={messagesEndRef} />
                         </div>
@@ -311,7 +328,6 @@ const Messages = () => {
     );
 };
 
-// Chat header rendering function
 const renderChatHeader = (conversations, selectedConversationId, currentUserId, isDesktop = false) => {
     const selectedConversation = conversations.find(c => c._id === selectedConversationId);
     const otherParticipants = selectedConversation?.participants.filter(p => p._id !== currentUserId) || [];
@@ -424,7 +440,5 @@ const MessageBubble = ({ message, currentUserId, onDelete }) => {
         </div>
     );
 };
-
-
 
 export default Messages;
