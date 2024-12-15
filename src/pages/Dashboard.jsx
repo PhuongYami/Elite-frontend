@@ -12,6 +12,9 @@ import { useSelector, useDispatch } from 'react-redux';
 import { fetchCurrentUser } from '../features/user/userSlice';
 import { debounce } from 'lodash';
 import { toast } from 'sonner';
+import { useNavigate } from "react-router-dom";
+import { createInteraction } from '../api/interactionApi';
+
 
 // Helper function to get icon for different activity types
 const getActivityIcon = (type) => {
@@ -99,6 +102,7 @@ const Dashboard = () => {
     const [totalMatches, setTotalMatches] = useState(0);
     const [activitiesPage, setActivitiesPage] = useState(1);
     const [totalActivities, setTotalActivities] = useState(0);
+
      // Get user ID from Redux store
      const { userId, user } = useSelector(state => state.user);
      const maxActivitiesPerPage = 4;
@@ -114,15 +118,20 @@ const Dashboard = () => {
                 const response = await fetchRecommendations(userId, 3, page);
                 
                 if (response.results && response.results.length > 0) {
-                    const apiMatches = response.results.map(match => ({
-                        name: match.user.firstName +" "+ match.user.lastName || 'Unknown',
-                        age: calculateAge(match.user.dateOfBirth),
-                        location: formatLocation(match.user.location),
-                        avatar: match.user.profilePicture || 'https://picsum.photos/400',
-                        compatibility: Math.round(match.compatibilityScore),
-                        interests: match.user.interests || [],
-                        id: match.user._id
-                    }));
+                    const apiMatches = response.results.map(match => {
+                        const user = match.user || {};
+                        const photos = user.photos || [];
+                        return {
+                            name: `${user.firstName || 'Unknown'} ${user.lastName || ''}`.trim(),
+                            age: user.dateOfBirth ? calculateAge(user.dateOfBirth) : 'N/A',
+                            location: user.location ? formatLocation(user.location) : 'Unknown',
+                            avatar: photos.length > 0 ? photos[0].url : 'https://picsum.photos/400',
+                            compatibility: Math.round(match.compatibilityScore || 0),
+                            interests: user.interests || [],
+                            id: user._id || null,
+                            userId: user.userId
+                        };
+                    });
                     setRecommendedMatches(prev => apiMatches);
                     setTotalMatches(response.totalMatches || 0);
                 }
@@ -413,45 +422,73 @@ const ActivityItem = ({ icon, message, timestamp }) => (
   </div>
 );
 
-const MatchCard = ({ match }) => (
-    <div className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition transform hover:-translate-y-2">
-        <img 
-            src={match.avatar} 
-            alt={match.name} 
-            className="w-full h-48 object-cover" 
-        />
-        <div className="p-4">
-            <h3 className="text-xl font-light text-neutral-800">{match.name}</h3>
-            <p className="text-sm text-neutral-600">{match.age} • {match.location}</p>
-            
-            {/* Interests Chip Display */}
-            {match.interests && match.interests.length > 0 && (
-                <div className="mt-2 flex flex-wrap gap-2">
-                    {match.interests.slice(0, 3).map((interest, index) => (
-                        <span 
-                            key={index} 
-                            className="bg-neutral-100 text-neutral-700 text-xs px-2 py-1 rounded-full"
-                        >
-                            {interest}
-                        </span>
-                    ))}
+const MatchCard = ({ match }) => {
+    const navigate = useNavigate();
+    const { userId } = useSelector(state => state.user);
+
+    const handlePhotoClick = async () => {
+        console.log(match);
+        try {
+            // Create a view interaction
+            const interactionData = {
+                userFrom: userId,
+                userTo: match.userId,
+                type: 'View'
+            };
+            await createInteraction(interactionData);
+
+            // Navigate to the user's profile
+            navigate(`/user-profile/${match.userId}`);
+        } catch (error) {
+            console.error('Error creating view interaction:', error);
+            // Navigate to profile even if interaction creation fails
+            navigate(`/user-profile/${match.userId}`);
+        }
+    };
+
+    return (
+        <div className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition transform hover:-translate-y-2">
+            <img 
+                src={match.avatar} 
+                alt={match.name} 
+                onClick={handlePhotoClick}
+                className="w-full h-48 object-cover cursor-pointer" 
+            />
+            <div className="p-4">
+                <h3 className="text-xl font-light text-neutral-800">{match.name}</h3>
+                <p className="text-sm text-neutral-600">{match.age} • {match.location}</p>
+                
+                {match.interests && match.interests.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                        {match.interests.slice(0, 3).map((interest, index) => (
+                            <span 
+                                key={index} 
+                                className="bg-neutral-100 text-neutral-700 text-xs px-2 py-1 rounded-full"
+                            >
+                                {interest}
+                            </span>
+                        ))}
+                    </div>
+                )}
+                
+                <div className="mt-4 flex items-center space-x-2">
+                    <div className="flex-1 text-neutral-600 text-sm flex items-center">
+                        <Award className="mr-2 text-yellow-500" />
+                        Compatibility: {match.compatibility}%
+                    </div>
+                    <button 
+                        onClick={handlePhotoClick}
+                        className="flex-1 bg-neutral-100 text-neutral-700 py-2 rounded-full hover:bg-neutral-200 transition"
+                    >
+                        View Profile
+                    </button>
+                    <button className="flex-1 bg-neutral-800 text-white py-2 rounded-full hover:bg-neutral-700 transition">
+                        Connect
+                    </button>
                 </div>
-            )}
-            
-            <div className="mt-4 flex items-center space-x-2">
-                <div className="flex-1 text-neutral-600 text-sm flex items-center">
-                    <Award className="mr-2 text-yellow-500" />
-                    Compatibility: {match.compatibility}%
-                </div>
-                <button className="flex-1 bg-neutral-100 text-neutral-700 py-2 rounded-full hover:bg-neutral-200 transition">
-                    View Profile
-                </button>
-                <button className="flex-1 bg-neutral-800 text-white py-2 rounded-full hover:bg-neutral-700 transition">
-                    Connect
-                </button>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 export default Dashboard;

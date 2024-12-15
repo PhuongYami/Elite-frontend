@@ -3,6 +3,9 @@ import { Search, Filter, X, Users, MapPin, Heart, Ruler, Award } from "lucide-re
 import { fetchAdvancedSearch } from '../../api/searchApi';
 import { useSelector } from 'react-redux';
 import { toast } from 'sonner';
+import { useNavigate } from "react-router-dom";
+import { createInteraction } from "../../api/interactionApi";
+
 
 const AdvancedSearch = () => {
     const [filters, setFilters] = useState({
@@ -290,33 +293,61 @@ const FilterSelect = ({ label, options, value, onChange }) => (
     </div>
 );
 
-const ProfileCard = ({ profile, compatibilityScore }) => (
-    <div className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition transform hover:-translate-y-2">
-        <img
-            src={profile.photos?.[0]?.url || "/api/placeholder/400/400"}
-            alt={`${profile.firstName} ${profile.lastName}`}
-            className="w-full h-48 object-cover"
-        />
-        <div className="p-4">
-            <h3 className="text-xl font-light text-neutral-800">
-                {profile.firstName} {profile.lastName}
-            </h3>
-            <p className="text-sm text-neutral-600">
-                {profile.age} • {profile.location.city}, {profile.location.country}
-            </p>
-            <div className="mt-2 text-sm text-neutral-600">
-                Compatibility Score: {(compatibilityScore ).toFixed(2)}%
-            </div>
-            <div className="mt-4 flex space-x-2">
-                <button className="flex-1 bg-neutral-100 text-neutral-700 py-2 rounded-full hover:bg-neutral-200 transition">
-                    View Profile
-                </button>
-                <button className="flex-1 bg-neutral-800 text-white py-2 rounded-full hover:bg-neutral-700 transition">
-                    Connect
-                </button>
+const ProfileCard = ({ profile, compatibilityScore }) => {
+    const navigate = useNavigate();
+    const userId = useSelector(state => state.user.userId);
+
+    const handleProfileView = async () => {
+        try {
+            // Create a view interaction
+            const interactionData = {
+                userFrom: userId,
+                userTo: profile.userId,
+                type: 'View'
+            };
+            await createInteraction(interactionData);
+
+            // Navigate to the user's profile
+            navigate(`/user-profile/${profile.userId}`);
+        } catch (error) {
+            console.error('Error creating view interaction:', error);
+            // Navigate even if interaction creation fails
+            navigate(`/user-profile/${profile.userId}`);
+        }
+    };
+
+    return (
+        <div className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition transform hover:-translate-y-2">
+            <img
+            onClick={handleProfileView}
+                src={profile.photos?.[0]?.url || "/api/placeholder/400/400"}
+                alt={`${profile.firstName} ${profile.lastName}`}
+                className="w-full h-48 object-cover"
+            />
+            <div className="p-4">
+                <h3 className="text-xl font-light text-neutral-800">
+                    {profile.firstName} {profile.lastName}
+                </h3>
+                <p className="text-sm text-neutral-600">
+                    {profile.age} • {profile.location.city}, {profile.location.country}
+                </p>
+                <div className="mt-2 text-sm text-neutral-600">
+                    Compatibility Score: {(compatibilityScore).toFixed(2)}%
+                </div>
+                <div className="mt-4 flex space-x-2">
+                    <button 
+                        onClick={handleProfileView}
+                        className="flex-1 bg-neutral-100 text-neutral-700 py-2 rounded-full hover:bg-neutral-200 transition"
+                    >
+                        View Profile
+                    </button>
+                    <button className="flex-1 bg-neutral-800 text-white py-2 rounded-full hover:bg-neutral-700 transition">
+                        Connect
+                    </button>
+                </div>
             </div>
         </div>
-    </div>
-);
+    );
+};
 
 export default AdvancedSearch;

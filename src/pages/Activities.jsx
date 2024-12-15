@@ -111,10 +111,10 @@ const Activities = () => {
                 getUserMatches(userId),
                 getUserNotifications(userId)
             ]);
-
-            // Xử lý dữ liệu
+    
+            // Thêm trường priority để ưu tiên hiển thị
             const transformedInteractions = interactionsData
-                .filter(interaction => interaction.type !== 'Dislike') // Bỏ qua loại 'dislike'
+                .filter(interaction => interaction.type !== 'Dislike')
                 .map((interaction) => ({
                     id: interaction._id,
                     type: interaction.type,
@@ -122,45 +122,68 @@ const Activities = () => {
                     title: `${interaction.type} from ${interaction.userTo.username}`,
                     details: `Someone is interested in you!`,
                     timestamp: formatTimestamp(interaction.createdAt),
+                    priority: getPriorityForActivity(interaction.type),
+                    originalTimestamp: interaction.createdAt
                 }));
-
-
+    
             const transformedMatches = matchesData.map((match) => {
-                // Kiểm tra user1 và user2
                 const otherUser = match.user1._id === userId ? match.user2 : match.user1;
             
                 return {
                     id: match._id,
                     type: 'Match',
                     icon: <Heart />,
-                    title: `New Match with ${otherUser.username}`, // Lấy tên của đối phương
+                    title: `New Match with ${otherUser.username}`,
                     details: `Compatibility: ${match.compatibilityScore}%`,
-                    timestamp: formatTimestamp(match.matchedAt)
+                    timestamp: formatTimestamp(match.matchedAt),
+                    priority: getPriorityForActivity('Match'),
+                    originalTimestamp: match.matchedAt
                 };
             });
-            
-
+    
             const transformedNotifications = notificationsResponse.notifications.map((notification) => ({
                 id: notification._id,
                 type: notification.type,
                 icon: getIconForNotificationType(notification.type),
                 title: notification.content,
                 details: `${notification.type} Notification`,
-                timestamp: formatTimestamp(notification.createdAt)
+                timestamp: formatTimestamp(notification.createdAt),
+                priority: getPriorityForActivity(notification.type),
+                originalTimestamp: notification.createdAt
             }));
-
+    
+            // Sắp xếp kết hợp với priority và timestamp
             const combinedActivities = [
                 ...transformedInteractions,
                 ...transformedMatches,
                 ...transformedNotifications
-            ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
+            ].sort((a, b) => {
+                // Ưu tiên theo priority trước
+                if (a.priority !== b.priority) {
+                    return b.priority - a.priority;
+                }
+                // Nếu priority bằng nhau, sắp xếp theo thời gian mới nhất
+                return new Date(b.originalTimestamp) - new Date(a.originalTimestamp);
+            });
+    
             setActivities(combinedActivities);
             setLoading(false);
         } catch (error) {
             console.error('Error fetching activities:', error);
             setLoading(false);
         }
+    };
+    
+    // Hàm để xác định độ ưu tiên của từng loại hoạt động
+    const getPriorityForActivity = (type) => {
+        const priorityMap = {
+            'Match': 3,        // Độ ưu tiên cao nhất
+            'SuperLike': 2,    // Ưu tiên cao
+            'Like': 1,         // Ưu tiên trung bình
+            'View': 0,         // Ưu tiên thấp
+            'default': -1      // Mặc định cho các loại khác
+        };
+        return priorityMap[type] !== undefined ? priorityMap[type] : priorityMap['default'];
     };
     useEffect(() => {
         const filtered = activities.filter((activity) => {
