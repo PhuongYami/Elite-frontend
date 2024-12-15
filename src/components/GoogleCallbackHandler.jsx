@@ -9,8 +9,6 @@ const GoogleCallbackHandler = () => {
   const { token } = useParams();
 
   useEffect(() => {
-
-
     if (token) {
       // Lưu token vào Redux hoặc LocalStorage
       dispatch( setAccessToken({ token })); // Lưu vào Redux

@@ -161,7 +161,9 @@ const Dashboard = () => {
              ]);
  
              // Transform interactions
-             const transformedInteractions = interactionsData.map(interaction => ({
+             const transformedInteractions = interactionsData
+             .filter(interaction => interaction.type !== 'Dislike')
+             .map(interaction => ({
                  id: interaction._id,
                  type: interaction.type,
                  icon: getActivityIcon(interaction.type),
@@ -194,7 +196,7 @@ const Dashboard = () => {
                  ...transformedInteractions,
                  ...transformedMatches,
                  ...filteredNotifications
-             ].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+             ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
  
              // Pagination
              const startIndex = (page - 1) * maxActivitiesPerPage;

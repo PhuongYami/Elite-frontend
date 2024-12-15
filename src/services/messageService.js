@@ -23,14 +23,19 @@ export const deleteMessage = async (messageId, setMessages) =>
 export const markMessagesAsRead = async (messages, userId, setMessages) =>
 {
     const unreadMessages = messages.filter(
-        (msg) => msg.status !== 'read' && msg.receiver === userId
+        (msg) =>
+            msg.status !== 'read' &&
+            msg.receiver === userId &&
+            msg.sender !== userId // Loại bỏ tin nhắn của chính mình
     );
 
     try
     {
         for (const msg of unreadMessages)
         {
-            await markMessageAsReadApi(msg._id);
+            await markMessageAsReadApi(msg._id); // Gọi API
+
+            // Chỉ cập nhật trạng thái nếu cần
             setMessages((prevMessages) =>
                 prevMessages.map((m) =>
                     m._id === msg._id ? { ...m, status: 'read', read_at: new Date() } : m

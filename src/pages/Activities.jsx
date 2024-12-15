@@ -113,14 +113,17 @@ const Activities = () => {
             ]);
 
             // Xử lý dữ liệu
-            const transformedInteractions = interactionsData.map((interaction) => ({
-                id: interaction._id,
-                type: interaction.type,
-                icon: getIconForInteraction(interaction.type),
-                title: `${interaction.type} from ${interaction.userTo.username}`,
-                details: `Someone is interested in you!`,
-                timestamp: formatTimestamp(interaction.createdAt)
-            }));
+            const transformedInteractions = interactionsData
+                .filter(interaction => interaction.type !== 'Dislike') // Bỏ qua loại 'dislike'
+                .map((interaction) => ({
+                    id: interaction._id,
+                    type: interaction.type,
+                    icon: getIconForInteraction(interaction.type),
+                    title: `${interaction.type} from ${interaction.userTo.username}`,
+                    details: `Someone is interested in you!`,
+                    timestamp: formatTimestamp(interaction.createdAt),
+                }));
+
 
             const transformedMatches = matchesData.map((match) => {
                 // Kiểm tra user1 và user2

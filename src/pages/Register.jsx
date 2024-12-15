@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import { MapPin, Loader2 } from "lucide-react";
+import { MapPin, Loader2, Users, Mail, Lock, Phone, Calendar, Compass } from "lucide-react";
 import { useDispatch, useSelector } from "react-redux";
-import { registerUser } from "../features/auth/authSlice"; // Import từ slice của bạn
+import { registerUser } from "../features/auth/authSlice";
 import { useNavigate } from "react-router-dom";
 import GoogleLoginButton from '../components/GoogleLoginButton';
 
@@ -80,7 +80,7 @@ const Register = () => {
               },
             }));
           } catch (error) {
-            console.error("Lỗi khi lấy thông tin địa điểm:", error);
+            console.error("Location info retrieval error:", error);
             setFormData((prevState) => ({
               ...prevState,
               location: {
@@ -92,7 +92,7 @@ const Register = () => {
           }
         },
         (error) => {
-          console.error("Lỗi khi lấy vị trí:", error);
+          console.error("Location error:", error);
           setFormData((prevState) => ({
             ...prevState,
             location: {
@@ -100,11 +100,11 @@ const Register = () => {
               isDetecting: false,
             },
           }));
-          alert("Không thể lấy vị trí. Vui lòng nhập thủ công.");
+          alert("Unable to detect location. Please enter manually.");
         }
       );
     } else {
-      alert("Trình duyệt của bạn không hỗ trợ định vị.");
+      alert("Your browser does not support geolocation.");
     }
   };
 
@@ -113,152 +113,228 @@ const Register = () => {
     try {
       const result = await dispatch(registerUser(formData)).unwrap();
       console.log(result);
-      alert("Mã OTP đã được gửi tới email của bạn. Vui lòng kiểm tra!");
-      navigate("/otp-verification", { state: { email: formData.email } }); // Chuyển hướng tới trang OTP với email
+      alert("OTP has been sent to your email. Please check!");
+      navigate("/otp-verification", { state: { email: formData.email } });
     } catch (err) {
       console.error("Registration failed:", err);
     }
   };
 
   return (
-    <div className="flex justify-center items-center min-h-screen bg-pink-100 p-4">
-      <div className="w-full max-w-md bg-white shadow-lg rounded-lg p-6">
-        <h2 className="text-2xl font-bold text-gray-800 text-center mb-6">Đăng Ký</h2>
-
-        {error && <div className="text-red-600 text-center mb-4">{error}</div>}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <input
-              type="text"
-              name="firstName"
-              value={formData.firstName}
-              onChange={handleInputChange}
-              placeholder="Tên"
-              required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
-            />
-            <input
-              type="text"
-              name="lastName"
-              value={formData.lastName}
-              onChange={handleInputChange}
-              placeholder="Họ"
-              required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
-            />
+    <div className="min-h-screen bg-neutral-50 flex items-center justify-center p-8">
+      <div className="w-full max-w-lg">
+        <div className="bg-white rounded-2xl shadow-lg p-8 space-y-6">
+          {/* Header */}
+          <div className="text-center">
+            <h1 className="text-4xl font-thin text-neutral-800 mb-2 flex items-center justify-center">
+              <Users className="mr-3 text-neutral-600" />
+              Create Account
+            </h1>
+            <p className="text-neutral-600 mb-6">Join our community today</p>
           </div>
 
-          <input
-            type="text"
-            name="username"
-            value={formData.username}
-            onChange={handleInputChange}
-            placeholder="Tên đăng nhập"
-            required
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
-          />
+          {/* Error Notification */}
+          {error && (
+            <div className="text-red-600 bg-red-50 border border-red-300 rounded-lg p-4 text-center">
+              {error}
+            </div>
+          )}
 
-          <input
-            type="email"
-            name="email"
-            value={formData.email}
-            onChange={handleInputChange}
-            placeholder="Email"
-            required
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
-          />
-
-          <input
-            type="password"
-            name="password"
-            value={formData.password}
-            onChange={handleInputChange}
-            placeholder="Mật khẩu"
-            required
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
-          />
-
-          <input
-            type="tel"
-            name="phone"
-            value={formData.phone}
-            onChange={handleInputChange}
-            placeholder="Số điện thoại"
-            required
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
-          />
-
-          <input
-            type="date"
-            name="dateOfBirth"
-            value={formData.dateOfBirth}
-            onChange={handleInputChange}
-            required
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
-          />
-
-          <select
-            name="gender"
-            value={formData.gender}
-            onChange={handleInputChange}
-            required
-            className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
-          >
-            <option value="">Chọn giới tính</option>
-            <option value="Male">Nam</option>
-            <option value="Female">Nữ</option>
-            <option value="Other">Khác</option>
-          </select>
-
-          <div className="space-y-2">
-            <div className="flex items-center space-x-2">
-              <input
-                type="text"
-                name="city"
-                value={formData.location.city}
-                onChange={handleLocationChange}
-                placeholder="Thành phố"
-                required
-                className="flex-grow px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
-              />
-              <button
-                type="button"
-                onClick={detectLocation}
-                disabled={formData.location.isDetecting}
-                className="p-2 border rounded-md hover:bg-gray-100 disabled:opacity-50"
-              >
-                {formData.location.isDetecting ? (
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                ) : (
-                  <MapPin className="h-5 w-5" />
-                )}
-              </button>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Name Inputs */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="relative">
+                <input
+                  type="text"
+                  name="firstName"
+                  value={formData.firstName}
+                  onChange={handleInputChange}
+                  placeholder="First Name"
+                  required
+                  className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <Users className="absolute left-3 top-3 text-neutral-400" size={18} />
+              </div>
+              <div className="relative">
+                <input
+                  type="text"
+                  name="lastName"
+                  value={formData.lastName}
+                  onChange={handleInputChange}
+                  placeholder="Last Name"
+                  required
+                  className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <Users className="absolute left-3 top-3 text-neutral-400" size={18} />
+              </div>
             </div>
 
-            <input
-              type="text"
-              name="country"
-              value={formData.location.country}
-              onChange={handleLocationChange}
-              placeholder="Quốc gia"
-              required
-              className="w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-pink-500"
-            />
-          </div>
+            {/* Username Input */}
+            <div className="relative">
+              <input
+                type="text"
+                name="username"
+                value={formData.username}
+                onChange={handleInputChange}
+                placeholder="Username"
+                required
+                className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <Users className="absolute left-3 top-3 text-neutral-400" size={18} />
+            </div>
 
-          <button
-            type="submit"
-            disabled={loading}
-            className={`w-full bg-pink-600 text-white py-2 rounded-md hover:bg-pink-700 transition duration-300 ${
-              loading ? "opacity-50 cursor-not-allowed" : ""
-            }`}
-          >
-            {loading ? "Đang xử lý..." : "Đăng Ký"}
-          </button>
-          <p className="text-center text-gray-600 mb-2">Hoặc</p>
-          <GoogleLoginButton /> {/* Thêm nút GoogleLoginButton */}
-        </form>
+            {/* Email Input */}
+            <div className="relative">
+              <input
+                type="email"
+                name="email"
+                value={formData.email}
+                onChange={handleInputChange}
+                placeholder="Email Address"
+                required
+                className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <Mail className="absolute left-3 top-3 text-neutral-400" size={18} />
+            </div>
+
+            {/* Password Input */}
+            <div className="relative">
+              <input
+                type="password"
+                name="password"
+                value={formData.password}
+                onChange={handleInputChange}
+                placeholder="Password"
+                required
+                className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <Lock className="absolute left-3 top-3 text-neutral-400" size={18} />
+            </div>
+
+            {/* Phone Input */}
+            <div className="relative">
+              <input
+                type="tel"
+                name="phone"
+                value={formData.phone}
+                onChange={handleInputChange}
+                placeholder="Phone Number"
+                required
+                className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <Phone className="absolute left-3 top-3 text-neutral-400" size={18} />
+            </div>
+
+            {/* Date of Birth */}
+            <div className="relative">
+              <input
+                type="date"
+                name="dateOfBirth"
+                value={formData.dateOfBirth}
+                onChange={handleInputChange}
+                required
+                className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <Calendar className="absolute left-3 top-3 text-neutral-400" size={18} />
+            </div>
+
+            {/* Gender Select */}
+            <div className="relative">
+              <select
+                name="gender"
+                value={formData.gender}
+                onChange={handleInputChange}
+                required
+                className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">Select Gender</option>
+                <option value="Male">Male</option>
+                <option value="Female">Female</option>
+                <option value="Other">Other</option>
+              </select>
+              <Users className="absolute left-3 top-3 text-neutral-400" size={18} />
+            </div>
+
+            {/* Location Inputs */}
+            <div className="space-y-4">
+              <div className="relative flex items-center space-x-2">
+                <div className="flex-grow relative">
+                  <input
+                    type="text"
+                    name="city"
+                    value={formData.location.city}
+                    onChange={handleLocationChange}
+                    placeholder="City"
+                    required
+                    className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <Compass className="absolute left-3 top-3 text-neutral-400" size={18} />
+                </div>
+                <button
+                  type="button"
+                  onClick={detectLocation}
+                  disabled={formData.location.isDetecting}
+                  className="p-3 border border-neutral-200 rounded-lg hover:bg-neutral-100 disabled:opacity-50 transition"
+                >
+                  {formData.location.isDetecting ? (
+                    <Loader2 className="h-5 w-5 animate-spin" />
+                  ) : (
+                    <MapPin className="h-5 w-5 text-neutral-600" />
+                  )}
+                </button>
+              </div>
+
+              <div className="relative">
+                <input
+                  type="text"
+                  name="country"
+                  value={formData.location.country}
+                  onChange={handleLocationChange}
+                  placeholder="Country"
+                  required
+                  className="w-full pl-10 pr-4 py-3 border border-neutral-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+                <Compass className="absolute left-3 top-3 text-neutral-400" size={18} />
+              </div>
+            </div>
+
+            {/* Submit Button */}
+            <button
+              type="submit"
+              disabled={loading}
+              className={`w-full py-3 rounded-lg font-medium text-white transition ${
+                loading
+                  ? 'bg-neutral-400 cursor-not-allowed'
+                  : 'bg-neutral-800 hover:bg-neutral-700 focus:ring-2 focus:ring-neutral-500'
+              }`}
+            >
+              {loading ? 'Processing...' : 'Create Account'}
+            </button>
+
+            {/* Divider */}
+            <div className="flex items-center my-6">
+              <hr className="flex-1 border-neutral-200" />
+              <span className="px-4 text-sm text-neutral-500">OR</span>
+              <hr className="flex-1 border-neutral-200" />
+            </div>
+
+            {/* Social Login */}
+            <div className="text-center">
+              <GoogleLoginButton />
+            </div>
+
+            {/* Login Redirect */}
+            <p className="text-center text-sm text-neutral-600">
+              Already have an account?{' '}
+              <button
+                onClick={() => navigate('/login')}
+                className="text-blue-600 hover:underline font-medium"
+              >
+                Sign in
+              </button>
+            </p>
+          </form>
+        </div>
       </div>
     </div>
   );

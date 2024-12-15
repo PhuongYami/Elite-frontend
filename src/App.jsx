@@ -35,7 +35,7 @@ const App = () => {
         const path = window.location.pathname;
 
         // Chỉ làm mới token nếu không ở trang đăng nhập hoặc đăng ký
-        if (!['/login', '/register'].includes(path)) {
+        if (!['/login', '/register', '/reset-password'].includes(path)) {
           await dispatch(refreshAccessToken()).unwrap();
           await dispatch(fetchCurrentUser()).unwrap();
         }
