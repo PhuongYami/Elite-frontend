@@ -10,6 +10,8 @@ import socket from '../utils/socket.js';
 import { fetchCurrentUser } from '../features/user/userSlice.js';
 import { format } from 'date-fns';
 import { deleteMessage, markMessagesAsRead } from '../services/messageService.js';
+import useVideoCall from '../utils/useVideoCall.js';
+import VideoCallModal from '../components/VideoCallModal.jsx';
 
 const Messages = () => {
     const [conversations, setConversations] = useState([]);
@@ -22,11 +24,69 @@ const Messages = () => {
     const [showConversationList, setShowConversationList] = useState(true);
     const messagesEndRef = useRef(null);
     const [messagesByConversation, setMessagesByConversation] = useState({});
-
+    const [showVideoCallModal, setShowVideoCallModal] = useState(false);
+    const [incomingCall, setIncomingCall] = useState(false);
+    const [caller, setCaller] = useState(null);
+    const { userId, user: currentUser } = useSelector(state => state.user);
+    
     const limit = 20;
     const navigate = useNavigate();
-    const { userId } = useSelector(state => state.user);
+
     const dispatch = useDispatch();
+    const { 
+        localVideoRef, 
+        remoteVideoRef, 
+        startVideoCall, 
+        endVideoCall,
+        handleIncomingCall
+    } = useVideoCall(selectedConversationId);
+    useEffect(() => {
+        const handleIncomingVideoCall = (data) => {
+            setIncomingCall(true);
+            setCaller(data.caller);
+            setShowVideoCallModal(true);
+        };
+
+        socket.on('incomingVideoCall', handleIncomingVideoCall);
+
+        return () => {
+            socket.off('incomingVideoCall', handleIncomingVideoCall);
+        };
+    }, []);
+
+    const handleStartVideoCall = () => {
+        const selectedConversation = conversations.find(c => c._id === selectedConversationId);
+        const otherParticipant = selectedConversation?.participants.find(p => p._id !== userId);
+        
+        // Emit video call invitation to the other participant
+        socket.emit('initiateVideoCall', {
+            conversationId: selectedConversationId,
+            caller: { 
+                _id: userId, 
+                username: currentUser.username, 
+                avatar: currentUser.avatar 
+            }
+        });
+
+        setShowVideoCallModal(true);
+        setIncomingCall(false);
+        startVideoCall();
+    };
+
+    const handleAcceptCall = () => {
+        setIncomingCall(false);
+        startVideoCall();
+    };
+
+    const handleEndVideoCall = () => {
+        setShowVideoCallModal(false);
+        setIncomingCall(false);
+        endVideoCall();
+        
+        // Optional: Emit end call event to other participant
+        socket.emit('endVideoCall', { conversationId: selectedConversationId });
+    };
+    
 
     // Scroll to bottom when messages change
     const scrollToBottom = () => {
@@ -263,12 +323,12 @@ const Messages = () => {
                             >
                                 <ArrowLeft />
                             </button>
-                            {renderChatHeader(conversations, selectedConversationId, userId)}
+                            {renderChatHeader(conversations, selectedConversationId, userId,handleStartVideoCall)}
                         </div>
 
                         {/* Desktop Header */}
                         <div className="hidden md:flex bg-white border-b border-neutral-200 p-6 justify-between items-center">
-                            {renderChatHeader(conversations, selectedConversationId, userId, true)}
+                            {renderChatHeader(conversations, selectedConversationId, userId, true,handleStartVideoCall)}
                         </div>
 
                         {/* Messages Container */}
@@ -324,11 +384,25 @@ const Messages = () => {
                     </div>
                 )}
             </div>
+            {showVideoCallModal && (
+                <VideoCallModal 
+                    localVideoRef={localVideoRef}
+                    remoteVideoRef={remoteVideoRef}
+                    onEndCall={handleEndVideoCall}
+                    incomingCall={incomingCall}
+                    onAcceptCall={handleAcceptCall}
+                    otherParticipant={caller || 
+                        (conversations.find(c => c._id === selectedConversationId)
+                            ?.participants.find(p => p._id !== userId))
+                    }
+                />
+            )}
         </div>
+        
     );
 };
 
-const renderChatHeader = (conversations, selectedConversationId, currentUserId, isDesktop = false) => {
+const renderChatHeader = (conversations, selectedConversationId, currentUserId, isDesktop = false, handleStartVideoCall) => {
     const selectedConversation = conversations.find(c => c._id === selectedConversationId);
     const otherParticipants = selectedConversation?.participants.filter(p => p._id !== currentUserId) || [];
     const otherUsername = otherParticipants.map(p => p.username).join(', ');
@@ -365,7 +439,7 @@ const renderChatHeader = (conversations, selectedConversationId, currentUserId, 
                         <Phone />
                     </button>
                     <button className="text-neutral-600 hover:text-neutral-800">
-                        <Video />
+                        <Video  onClick={handleStartVideoCall} />
                     </button>
                     <button className="text-neutral-600 hover:text-neutral-800">
                         <MoreVertical />
