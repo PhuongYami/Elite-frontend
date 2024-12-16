@@ -107,21 +107,28 @@ axiosInstance.interceptors.response.use(
     {
         const originalRequest = error.config;
 
-        // Handle 401 and 403 errors for refresh token
-        if (
-            (error.response?.status === 401 || error.response?.status === 403) &&
-            originalRequest.url.includes('/auth/refresh-token')
-        )
-        {
-            // Clear authentication state
-            store.dispatch(clearAuth());
-            window.location.href = '/login'; // Redirect to login
-            return Promise.reject(error);
-        }
+        // Danh sách các route không cần tự động redirect
+        const bypassRoutes = [
+            '/reset-password',
+            '/forgot-password',
+            // Thêm các route khác nếu cần
+        ];
 
-        // Handle other 401 errors
+        // Kiểm tra nếu là lỗi 401 và không phải route đặc biệt
         if (error.response?.status === 401 && !originalRequest._retry)
         {
+            const isSpecialRoute = bypassRoutes.some(route =>
+                originalRequest.url.includes(route)
+            );
+
+            if (isSpecialRoute)
+            {
+                // Với các route đặc biệt, chỉ clear auth mà không redirect
+                store.dispatch(clearAuth());
+                return Promise.reject(error);
+            }
+
+            // Giữ nguyên logic refresh token cho các route thông thường
             originalRequest._retry = true;
 
             const state = store.getState();
@@ -135,15 +142,14 @@ axiosInstance.interceptors.response.use(
                 const response = await authApi.refreshToken();
                 const newToken = response.data.token;
 
-                // Update token in Redux
                 store.dispatch(setAuth({ token: newToken }));
-                // Retry the original request with the new token
                 originalRequest.headers.Authorization = `Bearer ${ newToken }`;
                 return axiosInstance(originalRequest);
             } catch (refreshError)
             {
+                // Chỉ redirect khi refresh token thất bại và không phải route đặc biệt
                 store.dispatch(clearAuth());
-                window.location.href = '/login'; // Redirect to login
+                window.location.href = '/login';
                 return Promise.reject(refreshError);
             }
         }
