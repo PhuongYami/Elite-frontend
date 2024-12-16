@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { fetchRecommendations } from '../api/searchApi';
 import { getInteractions } from '../api/interactionApi';
-import { getUserMatches } from '../api/matchingApi.js';
+import { getUserMatches,createOrGetMatchApi,updateMatchStatus } from '../api/matchingApi.js';
 import { getUserNotifications } from '../api/notificationApi';
 import { useSelector, useDispatch } from 'react-redux';
 import { fetchCurrentUser, fetchProfileCompleteness } from '../features/user/userSlice';
@@ -14,7 +14,7 @@ import { debounce } from 'lodash';
 import { toast } from 'sonner';
 import { useNavigate } from "react-router-dom";
 import { createInteraction,getProfileViews  } from '../api/interactionApi';
-import {getUnreadMessagesCount} from '../api/messageApi.js'
+import {getUnreadMessagesCount,createOrGetConversationApi} from '../api/messageApi.js'
 
 
 
@@ -481,7 +481,20 @@ const MatchCard = ({ match }) => {
             navigate(`/user-profile/${match.userId}`);
         }
     };
-
+    const handleConnectClick = async () => {
+        try {
+            // Gọi API để tạo hoặc lấy conversation
+            const conversationResponse = await createOrGetConversationApi(match.userId);
+            if (conversationResponse && conversationResponse.data && conversationResponse.data.conversation) {
+                // Điều hướng đến giao diện tin nhắn
+                navigate(`/messages/${conversationResponse.data.conversation._id}`);
+            } else {
+                throw new Error('Failed to fetch or create conversation');
+            }
+        } catch (error) {
+            console.error('Error creating or fetching conversation:', error);
+        }
+    };
     return (
         <div className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition transform hover:-translate-y-2">
             <img 
@@ -518,7 +531,8 @@ const MatchCard = ({ match }) => {
                     >
                         View Profile
                     </button>
-                    <button className="flex-1 bg-neutral-800 text-white py-2 rounded-full hover:bg-neutral-700 transition">
+                    <button  onClick={handleConnectClick}
+                     className="flex-1 bg-neutral-800 text-white py-2 rounded-full hover:bg-neutral-700 transition">
                         Connect
                     </button>
                 </div>

@@ -322,7 +322,7 @@ const Activities = () => {
                 </section>
 
                 {/* Upcoming Events */}
-                <section className="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
+                {/* <section className="bg-white rounded-2xl shadow-lg p-4 sm:p-6">
                     <h2 className="text-xl sm:text-2xl font-light text-neutral-800 border-b pb-3 mb-6 flex items-center">
                         <Calendar className="mr-3 text-neutral-600 w-5 h-5 sm:w-6 sm:h-6" />
                         Upcoming Events
@@ -332,7 +332,7 @@ const Activities = () => {
                             <EventCard key={event.id} event={event} />
                         ))}
                     </div>
-                </section>
+                </section> */}
             </div>
             {/* <section className="bg-white rounded-2xl shadow-lg p-4 sm:p-6 mb-8">
                 {loading ? (
