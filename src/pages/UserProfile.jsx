@@ -1,38 +1,41 @@
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useDispatch } from "react-redux";
-import { fetchUserProfileById } from '../features/user/userSlice'; // You'll need to implement this API call
+import { useDispatch, useSelector } from "react-redux";
+import { fetchUserProfileById } from '../features/user/userSlice';
 import {
     MapPin, Briefcase, GraduationCap, Heart, Camera,
     Cigarette, Wine, Users, Ruler, Diamond, Baby, HomeIcon,
 } from 'lucide-react';
 import Lightbox from "yet-another-react-lightbox";
 import "yet-another-react-lightbox/styles.css";
+import { createOrGetMatchApi,getMatchStatus, respondToMatchRequest } from '../api/matchingApi.js';
+import { createOrGetConversationApi } from '../api/messageApi.js';
+import { toast } from 'sonner';
 
 const UserProfile = () => {
     const { userId } = useParams(); // Get user ID from URL
     const navigate = useNavigate();
     const [userProfile, setUserProfile] = useState(null);
+    const [matchStatus, setMatchStatus] = useState(null); // Match status: null, Pending, Accepted, Rejected
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isOpen, setIsOpen] = useState(false);
     const [currentIndex, setCurrentIndex] = useState(0);
     const [avatar, setAvatar] = useState("");
     const dispatch = useDispatch();
+    const { userId: currentUserId } = useSelector(state => state.user);
+    const [matchDetails, setMatchDetails] = useState(null);
+
 
     useEffect(() => {
         const loadUserProfile = async () => {
             try {
                 setLoading(true);
-                console.log('Fetching profile for userId:', userId);
-    
-                // Use .unwrap() to handle the promise and catch any errors
                 const profileResponse = await dispatch(fetchUserProfileById(userId)).unwrap();
-
-                
+    
                 if (profileResponse) {
-                    setUserProfile(profileResponse.profile); // Directly set the user profile
-                    setAvatar(profileResponse.avatar)
+                    setUserProfile(profileResponse.profile);
+                    setAvatar(profileResponse.avatar);
                 } else {
                     console.error('No profile found');
                     setError(new Error('Profile not found'));
@@ -45,12 +48,99 @@ const UserProfile = () => {
             }
         };
     
+        const checkMatchStatus = async () => {
+            try {
+                // Only fetch match status if both users are different
+                if (currentUserId && currentUserId !== userId) {
+                    const response = await getMatchStatus(currentUserId, userId);
+                    
+                    if (response.status && response.status !== 'No Match') {
+                        setMatchDetails(response);
+                        
+                        // Xác định trạng thái hiển thị
+                        if (response.match.user1 === currentUserId) {
+                            // Người dùng hiện tại là người gửi (user1)
+                            setMatchStatus(response.status === 'Pending' ? 'Pending' : null);
+                        } else {
+                            // Người dùng hiện tại là người nhận (user2)
+                            setMatchStatus(response.status === 'Pending' ? 'RespondToRequest' : null);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error("Error checking match status:", error);
+            }
+        };
+    
         if (userId) {
             loadUserProfile();
+            checkMatchStatus();
         }
-    }, [userId, dispatch]);
-    
+    }, [userId, currentUserId, dispatch]);
 
+    // Xử lý chấp nhận yêu cầu kết nối
+    const handleAccept = async () => {
+        try {
+            // Gửi yêu cầu chấp nhận kết nối
+            const response = await respondToMatchRequest(matchDetails.match._id, 'Matched');
+            if (response?.conversationId) {
+                setMatchStatus('Matched');
+                toast.success('You have accepted the match request!');
+    
+                // Điều hướng đến cuộc trò chuyện
+                //navigate(`/messages/${activity.id}`);
+                navigate(`/messages`);
+            } else {
+                throw new Error('Failed to fetch conversation.');
+            }
+        } catch (error) {
+            console.error('Error accepting match request:', error);
+            toast.error('Failed to accept the match request.');
+        }
+    };
+    
+    
+    // Xử lý từ chối yêu cầu kết nối
+    const handleReject = async () => {
+        try {
+            const response = await respondToMatchRequest(matchDetails.match._id, 'Rejected');
+            if (response?.data?.match) {
+                setMatchStatus('Rejected');
+                toast.success('You have rejected the match request.');
+            }
+        } catch (error) {
+            console.error('Error rejecting match request:', error);
+            toast.error('Failed to reject the match request.');
+        }
+    };
+
+    const handleConnectClick = async () => {
+        try {
+            if (matchStatus === "Matched") {
+                // Nếu đã match, mở giao diện chat
+                const conversationResponse = await createOrGetConversationApi(userId);
+                if (conversationResponse?.data?.conversation) {
+                    navigate(`/messages/${userId}`);
+                } else {
+                    throw new Error("Failed to create or fetch conversation.");
+                }
+            } else if (!matchStatus) {
+                // Gửi yêu cầu kết nối nếu chưa gửi
+                const matchResponse = await createOrGetMatchApi(userId);
+                if (matchResponse?.data?.match) {
+                    setMatchStatus("Pending"); // Cập nhật trạng thái
+                    toast.success("Match request sent!");
+                } else {
+                    throw new Error("Failed to send match request.");
+                }
+            }
+        } catch (error) {
+            console.error("Error in handleConnectClick:", error);
+            toast.error(error.message || "Error while connecting. Please try again.");
+        }
+    };
+
+    
     const openLightbox = (index) => {
         setCurrentIndex(index);
         setIsOpen(true);
@@ -104,13 +194,12 @@ const UserProfile = () => {
         drinking = 'Not specified',
         nationality = 'Not specified',
         location = { city: 'Not specified', country: 'Not specified' },
-        photos = [],    
+        photos = [],
     } = userProfile || {};
 
     return (
         <div className="min-h-screen bg-neutral-50 flex justify-center items-center p-6">
             <div className="w-full max-w-5xl bg-white shadow-2xl rounded-3xl overflow-hidden border border-neutral-200">
-                {/* Header Section */}
                 <div className="relative h-80 bg-gradient-to-br from-neutral-800 to-neutral-600">
                 <button 
                         onClick={() => navigate(-1)} 
@@ -131,6 +220,58 @@ const UserProfile = () => {
                         </svg>
                         <span className="ml-2 hidden sm:inline">Back</span>
                     </button>
+                    {currentUserId && currentUserId !== userId && (
+            <button
+                onClick={handleConnectClick}
+                className={`absolute top-4 right-4 z-10 rounded-full px-4 py-2 transition-all duration-300 flex items-center ${
+                    matchStatus === "Matched"
+                        ? "bg-green-600 text-white hover:bg-green-500"
+                        : matchStatus === "Pending"
+                        ? "bg-yellow-500 text-white cursor-not-allowed"
+                        : matchStatus === "RespondToRequest"
+                        ? "bg-blue-600 text-white hover:bg-blue-500"
+                        : "bg-white text-neutral-800 hover:bg-neutral-100"
+                }`}
+                disabled={matchStatus === "Pending"}
+            >
+                {matchStatus === "Matched" && (
+                    <>
+                        <Heart className="mr-2" size={18} />
+                        Matched
+                    </>
+                )}
+                {matchStatus === "Pending" && (
+                    <>
+                        <Heart className="mr-2" size={18} />
+                        Pending
+                    </>
+                )}
+                {matchStatus === "RespondToRequest" && (
+                <div className="flex space-x-4">
+                    <button
+                        onClick={handleAccept}
+                        className="bg-green-600 text-white rounded-full px-4 py-2 hover:bg-green-500 transition-all"
+                    >
+                        Accept
+                    </button>
+                    <button
+                        onClick={handleReject}
+                        className="bg-red-600 text-white rounded-full px-4 py-2 hover:bg-red-500 transition-all"
+                    >
+                        Reject
+                    </button>
+                </div>
+            )}
+
+                {!matchStatus && (
+                    <>
+                        <Heart className="mr-2" size={18} />
+                        Connect
+                    </>
+                )}
+            </button>
+        )}
+
                     {photos && photos.length > 0 && (
                         <div
                             className="absolute inset-0 bg-cover bg-center opacity-30"
@@ -153,7 +294,6 @@ const UserProfile = () => {
                         </div>
                     </div>
                 </div>
-
                 {/* Profile Content */}
                 <div className="grid md:grid-cols-3 gap-8 p-8">
                     {/* Left Column: Personal Details */}
@@ -290,7 +430,6 @@ const UserProfile = () => {
         </div>
     );
 };
-
 // Detail Item Component
 const DetailItem = ({ icon, label, value }) => (
     <div className="flex items-center space-x-4">
@@ -303,5 +442,4 @@ const DetailItem = ({ icon, label, value }) => (
         </div>
     </div>
 );
-
 export default UserProfile;
