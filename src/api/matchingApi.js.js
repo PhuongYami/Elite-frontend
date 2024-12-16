@@ -91,3 +91,8 @@ export const getPotentialMatches = async (userId) =>
         throw error;
     }
 };
+
+export const createOrGetMatchApi = (userId) =>
+{
+    return axiosInstance.post('/match/create-or-get', { userId });
+};

@@ -5,6 +5,7 @@ import { useSelector } from 'react-redux';
 import { toast } from 'sonner';
 import { useNavigate } from "react-router-dom";
 import { createInteraction } from "../../api/interactionApi";
+import {createOrGetConversationApi} from '../../api/messageApi.js'
 
 
 const AdvancedSearch = () => {
@@ -315,7 +316,20 @@ const ProfileCard = ({ profile, compatibilityScore }) => {
             navigate(`/user-profile/${profile.userId}`);
         }
     };
-
+const handleConnectClick = async () => {
+        try {
+            // Gọi API để tạo hoặc lấy conversation
+            const conversationResponse = await createOrGetConversationApi(profile.userId);
+            if (conversationResponse && conversationResponse.data && conversationResponse.data.conversation) {
+                // Điều hướng đến giao diện tin nhắn
+                navigate(`/messages/${conversationResponse.data.conversation._id}`);
+            } else {
+                throw new Error('Failed to fetch or create conversation');
+            }
+        } catch (error) {
+            console.error('Error creating or fetching conversation:', error);
+        }
+    };
     return (
         <div className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition transform hover:-translate-y-2">
             <img
@@ -341,7 +355,8 @@ const ProfileCard = ({ profile, compatibilityScore }) => {
                     >
                         View Profile
                     </button>
-                    <button className="flex-1 bg-neutral-800 text-white py-2 rounded-full hover:bg-neutral-700 transition">
+                    <button onClick={handleConnectClick}
+                    className="flex-1 bg-neutral-800 text-white py-2 rounded-full hover:bg-neutral-700 transition">
                         Connect
                     </button>
                 </div>

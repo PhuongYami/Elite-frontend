@@ -47,3 +47,8 @@ export const getUnreadMessagesCount = async (userId) =>
         throw error;
     }
 };
+// Gọi API tạo hoặc lấy conversation giữa hai người dùng
+export const createOrGetConversationApi = (userId) =>
+{
+    return axiosInstance.get(`/conversations/${ userId }`);
+};
