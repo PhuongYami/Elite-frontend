@@ -28,7 +28,7 @@ export const getMatchStatus = async (userId, targetUserId) =>
 {
     try
     {
-        const response = await axiosInstance.get(`/match/${ userId }/status/${ targetUserId }`);
+        const response = await axiosInstance.get(`/match/match-status/${ userId }/${ targetUserId }`);
         return response.data;
     } catch (error)
     {
@@ -95,4 +95,13 @@ export const getPotentialMatches = async (userId) =>
 export const createOrGetMatchApi = (userId) =>
 {
     return axiosInstance.post('/match/create-or-get', { userId });
+};
+
+export const respondToMatchRequest = async (matchId, action) =>
+{
+    const response = await axiosInstance.post(`/match/respond`, {
+        matchId,
+        action,
+    });
+    return response.data;
 };

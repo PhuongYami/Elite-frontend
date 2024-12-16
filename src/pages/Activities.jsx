@@ -351,6 +351,7 @@ const ActivityItem = ({ activity }) => {
 
     const handleActivityClick = () => {
         if (activity.type === 'Match') {
+            console.log(activity);
             navigate(`/messages/${activity.id}`); // Chuyển sang trang Messages với ID match
         }
     };

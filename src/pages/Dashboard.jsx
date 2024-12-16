@@ -506,31 +506,6 @@ const MatchCard = ({ match }) => {
             navigate(`/user-profile/${match.userId}`);
         }
     };
-    const handleConnectClick = async () => {
-        try {
-            // Gọi API để tạo hoặc lấy match
-            const matchResponse = await createOrGetMatchApi(match.userId);
-            console.log(matchResponse.match);
-
-            if (matchResponse?.data?.match) {
-                toast.success(`You are now matched with ${match.status}`);
-
-                // Gọi API để tạo hoặc lấy conversation
-                const conversationResponse = await createOrGetConversationApi(match.userId);
-                if (conversationResponse?.data?.conversation) {
-                    navigate(`/messages/${conversationResponse.data.conversation._id}`); // Điều hướng đến giao diện tin nhắn
-                } else {
-                    throw new Error('Failed to create or fetch conversation.');
-                }
-            } else {
-                throw new Error('Failed to create or fetch match.');
-            }
-        } catch (error) {
-            console.error('Error in handleConnectClick:', error);
-            toast.error(error.message || 'Error while connecting. Please try again.');
-        }
-       
-    };
     return (
         <div className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition transform hover:-translate-y-2">
             <img 
@@ -563,13 +538,9 @@ const MatchCard = ({ match }) => {
                     </div>
                     <button 
                         onClick={handlePhotoClick}
-                        className="flex-1 bg-neutral-100 text-neutral-700 py-2 rounded-full hover:bg-neutral-200 transition"
+                        className="flex-1 bg-neutral-800 text-white py-2 rounded-full hover:bg-neutral-700 transition"
                     >
                         View Profile
-                    </button>
-                    <button  onClick={handleConnectClick}
-                     className="flex-1 bg-neutral-800 text-white py-2 rounded-full hover:bg-neutral-700 transition">
-                        Connect
                     </button>
                 </div>
             </div>
