@@ -74,3 +74,20 @@ export const getInteractionsBetweenUsers = async (userId, targetUserId) =>
         throw error;
     }
 };
+/**
+ * Get profile views for a user.
+ * @param {string} userId - ID of the target user.
+ * @returns {Promise<number>} - Number of profile views.
+ */
+export const getProfileViews = async (userId) =>
+{
+    try
+    {
+        const response = await axiosInstance.get(`/interaction/profile-views/${ userId }`);
+        return response.data.profileViews;
+    } catch (error)
+    {
+        console.error('Error fetching profile views:', error);
+        throw error;
+    }
+};

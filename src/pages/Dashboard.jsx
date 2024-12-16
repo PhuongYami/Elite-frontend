@@ -9,11 +9,13 @@ import { getInteractions } from '../api/interactionApi';
 import { getUserMatches } from '../api/matchingApi.js';
 import { getUserNotifications } from '../api/notificationApi';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchCurrentUser } from '../features/user/userSlice';
+import { fetchCurrentUser, fetchProfileCompleteness } from '../features/user/userSlice';
 import { debounce } from 'lodash';
 import { toast } from 'sonner';
 import { useNavigate } from "react-router-dom";
-import { createInteraction } from '../api/interactionApi';
+import { createInteraction,getProfileViews  } from '../api/interactionApi';
+import {getUnreadMessagesCount} from '../api/messageApi.js'
+
 
 
 // Helper function to get icon for different activity types
@@ -102,12 +104,20 @@ const Dashboard = () => {
     const [totalMatches, setTotalMatches] = useState(0);
     const [activitiesPage, setActivitiesPage] = useState(1);
     const [totalActivities, setTotalActivities] = useState(0);
+    const [profileViews, setProfileViews] = useState(0);
+    const [matchCount, setMatchCount] = useState(0);
+    const [unreadMessagesCount, setUnreadMessagesCount] = useState(0);
 
      // Get user ID from Redux store
-     const { userId, user } = useSelector(state => state.user);
+     const { userId, user,profileCompleteness } = useSelector(state => state.user);
      const maxActivitiesPerPage = 4;
      
-
+     useEffect(() => {
+        // Gọi action để lấy độ hoàn thiện hồ sơ
+        if (userId) {
+            dispatch(fetchProfileCompleteness(userId));
+        }
+    }, [userId, dispatch]);
     // Debounced recommendation loader
     const loadRecommendations = useCallback(
         debounce(async (userId, page) => {
@@ -213,6 +223,7 @@ const Dashboard = () => {
  
              setRecentActivities(paginatedActivities);
              setTotalActivities(combinedActivities.length);
+             setMatchCount(transformedMatches.length);
          } catch (err) {
              console.error('Error fetching activities:', err);
              setError(err.message || 'Failed to load activities');
@@ -240,10 +251,6 @@ const Dashboard = () => {
             setActivitiesPage(prev => prev - 1);
         }
     };
-
-    
-
-
     const handleNextPage = () => {
         if (currentPage * 3 < totalMatches) {
             setCurrentPage(prev => prev + 1);
@@ -255,7 +262,36 @@ const Dashboard = () => {
             setCurrentPage(prev => prev - 1);
         }
     };
+    useEffect(() => {
+        const fetchProfileViews = async () => {
+            if (userId) {
+                try {
+                    const views = await getProfileViews(userId);
+                    console.log(userId);
+                    console.log(views);
+                    setProfileViews(views);
+                } catch (error) {
+                    console.error('Error fetching profile views:', error);
+                }
+            }
+        };
 
+        fetchProfileViews();
+    }, [userId]);
+    useEffect(() => {
+        const fetchUnreadMessages = async () => {
+            if (userId) {
+                try {
+                    const count = await getUnreadMessagesCount(userId);
+                    setUnreadMessagesCount(count);
+                } catch (error) {
+                    console.error('Error fetching unread messages count:', error);
+                }
+            }
+        };
+
+        fetchUnreadMessages();
+    }, [userId]);
     return (
         <div className="min-h-screen bg-neutral-50 p-8">
             <div className="max-w-7xl mx-auto">
@@ -266,25 +302,25 @@ const Dashboard = () => {
                     <StatCard 
                         icon={<Users />} 
                         title="Profile Views" 
-                        value={data.profileViews} 
+                        value={profileViews} 
                         color="from-blue-100 to-blue-200" 
                     />
                     <StatCard 
                         icon={<Heart />} 
                         title="Matches" 
-                        value={data.matches} 
+                        value={matchCount} 
                         color="from-pink-100 to-pink-200" 
                     />
                     <StatCard 
                         icon={<MessageSquare />} 
                         title="New Messages" 
-                        value={data.newMessages} 
+                        value={unreadMessagesCount} 
                         color="from-green-100 to-green-200" 
                     />
                     <StatCard 
                         icon={<Activity />} 
                         title="Profile Completeness" 
-                        value={`${data.profileCompleteness}%`} 
+                        value={`${profileCompleteness}%`} 
                         color="from-purple-100 to-purple-200" 
                     />
                 </div>

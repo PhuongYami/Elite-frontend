@@ -20,6 +20,8 @@ const userApi = {
     updateUserProfile: (data) => axiosInstance.put('/user/profile/update', data),
     // Update current user's password
     changePassword: (data) => axiosInstance.put('/user/change-password', data),
+    // Get profile completeness
+    getProfileCompleteness: (userId) => axiosInstance.get(`/user/profile-completeness/${ userId }`),
 
 
 };
