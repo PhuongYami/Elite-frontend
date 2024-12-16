@@ -79,6 +79,20 @@ export const changePassword = createAsyncThunk(
             return rejectWithValue(error.response?.data?.message || error.message);
         }
     });
+export const fetchProfileCompleteness = createAsyncThunk(
+    'user/fetchProfileCompleteness',
+    async (userId, { rejectWithValue }) =>
+    {
+        try
+        {
+            const response = await userApi.getProfileCompleteness(userId);
+            return response.data.completeness;
+        } catch (error)
+        {
+            return rejectWithValue(error.response?.data?.message || 'Failed to fetch profile completeness');
+        }
+    }
+);
 
 const userSlice = createSlice({
     name: 'user',
@@ -87,6 +101,7 @@ const userSlice = createSlice({
         loading: false,
         error: null,
         userId: null,
+        profileCompleteness: 0,
         userPreferences: {
             defaultFilters: {
                 ageRange: { min: 20, max: 55 },
@@ -116,6 +131,22 @@ const userSlice = createSlice({
     extraReducers: (builder) =>
     {
         builder
+            // Fetch profile completeness
+            .addCase(fetchProfileCompleteness.pending, (state) =>
+            {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(fetchProfileCompleteness.fulfilled, (state, action) =>
+            {
+                state.loading = false;
+                state.profileCompleteness = action.payload;
+            })
+            .addCase(fetchProfileCompleteness.rejected, (state, action) =>
+            {
+                state.loading = false;
+                state.error = action.payload;
+            })
             // Fetch current user
             .addCase(fetchCurrentUser.pending, (state) =>
             {

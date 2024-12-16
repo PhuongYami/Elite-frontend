@@ -30,3 +30,20 @@ export const sendMessageApi = (conversationId, content, messageType, receiver) =
         receiver,
     });
 };
+/**
+ * Get unread messages count for a user.
+ * @param {string} userId - ID of the user.
+ * @returns {Promise<number>} - Number of unread messages.
+ */
+export const getUnreadMessagesCount = async (userId) =>
+{
+    try
+    {
+        const response = await axiosInstance.get(`/message/unread-messages/${ userId }`);
+        return response.data.unreadCount;
+    } catch (error)
+    {
+        console.error('Error fetching unread messages count:', error);
+        throw error;
+    }
+};
