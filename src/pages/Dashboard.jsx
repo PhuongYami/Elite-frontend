@@ -165,72 +165,97 @@ const Dashboard = () => {
  
      // Fetch activities with pagination
      const fetchRecentActivities = useCallback(async (userId, page = 1) => {
-         if (!userId) return;
- 
-         setActivitiesLoading(true);
-         try {
-             const [
-                 interactionsData, 
-                 matchesData, 
-                 notificationsResponse
-             ] = await Promise.all([
-                 getInteractions(userId),
-                 getUserMatches(userId),
-                 getUserNotifications(userId)
-             ]);
- 
-             // Transform interactions
-             const transformedInteractions = interactionsData
-             .filter(interaction => interaction.type !== 'Dislike')
-             .map(interaction => ({
-                 id: interaction._id,
-                 type: interaction.type,
-                 icon: getActivityIcon(interaction.type),
-                 message: `${interaction.type} from ${interaction.userTo.username}`,
-                 timestamp: formatTimestamp(interaction.createdAt)
-             }));
- 
-             // Transform matches
-             const transformedMatches = matchesData.map(match => ({
-                 id: match._id,
-                 type: 'Match',
-                 icon: <Heart />,
-                 message: `Matched with a new connection`,
-                 timestamp: formatTimestamp(match.matchedAt)
-             }));
- 
-             // Transform notifications
-             const filteredNotifications = notificationsResponse.notifications
-                 .filter(notification => notification.type !== 'MATCH')
-                 .map(notification => ({
-                     id: notification._id,
-                     type: notification.type,
-                     icon: getActivityIcon(notification.type),
-                     message: notification.content,
-                     timestamp: formatTimestamp(notification.createdAt)
-                 }));
- 
-             // Combine and sort activities
-             const combinedActivities = [
-                 ...transformedInteractions,
-                 ...transformedMatches,
-                 ...filteredNotifications
-             ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
- 
-             // Pagination
-             const startIndex = (page - 1) * maxActivitiesPerPage;
-             const paginatedActivities = combinedActivities.slice(startIndex, startIndex + maxActivitiesPerPage);
- 
-             setRecentActivities(paginatedActivities);
-             setTotalActivities(combinedActivities.length);
-             setMatchCount(transformedMatches.length);
-         } catch (err) {
-             console.error('Error fetching activities:', err);
-             setError(err.message || 'Failed to load activities');
-         } finally {
-             setActivitiesLoading(false);
-         }
-     }, []);
+        if (!userId) return;
+    
+        setActivitiesLoading(true);
+        try {
+            const [
+                interactionsData, 
+                matchesData, 
+                notificationsResponse
+            ] = await Promise.all([
+                getInteractions(userId),
+                getUserMatches(userId),
+                getUserNotifications(userId)
+            ]);
+    
+            // Helper function to get priority for activity types
+            const getPriorityForActivity = (type) => {
+                const priorityMap = {
+                    'Match': 3,        // Highest priority
+                    'SuperLike': 2,    // High priority
+                    'Like': 1,         // Medium priority
+                    'View': 0,         // Low priority
+                    'default': -1      // Default for other types
+                };
+                return priorityMap[type] !== undefined ? priorityMap[type] : priorityMap['default'];
+            };
+    
+            // Transform interactions
+            const transformedInteractions = interactionsData
+            .filter(interaction => interaction.type !== 'Dislike')
+            .map(interaction => ({
+                id: interaction._id,
+                type: interaction.type,
+                icon: getActivityIcon(interaction.type),
+                message: `${interaction.type} from ${interaction.userTo.username}`,
+                timestamp: formatTimestamp(interaction.createdAt),
+                priority: getPriorityForActivity(interaction.type),
+                originalTimestamp: interaction.createdAt
+            }));
+    
+            // Transform matches
+            const transformedMatches = matchesData.map(match => ({
+                id: match._id,
+                type: 'Match',
+                icon: <Heart />,
+                message: `Matched with a new connection`,
+                timestamp: formatTimestamp(match.matchedAt),
+                priority: getPriorityForActivity('Match'),
+                originalTimestamp: match.matchedAt
+            }));
+    
+            // Transform notifications
+            const filteredNotifications = notificationsResponse.notifications
+                .filter(notification => notification.type !== 'MATCH')
+                .map(notification => ({
+                    id: notification._id,
+                    type: notification.type,
+                    icon: getActivityIcon(notification.type),
+                    message: notification.content,
+                    timestamp: formatTimestamp(notification.createdAt),
+                    priority: getPriorityForActivity(notification.type),
+                    originalTimestamp: notification.createdAt
+                }));
+    
+            // Combine and sort activities
+            const combinedActivities = [
+                ...transformedInteractions,
+                ...transformedMatches,
+                ...filteredNotifications
+            ].sort((a, b) => {
+                // First sort by priority
+                if (a.priority !== b.priority) {
+                    return b.priority - a.priority;
+                }
+                // If priorities are equal, sort by most recent timestamp
+                return new Date(b.originalTimestamp) - new Date(a.originalTimestamp);
+            });
+    
+            // Pagination
+            const startIndex = (page - 1) * maxActivitiesPerPage;
+            const paginatedActivities = combinedActivities.slice(startIndex, startIndex + maxActivitiesPerPage);
+    
+            setRecentActivities(paginatedActivities);
+            setTotalActivities(combinedActivities.length);
+            setMatchCount(transformedMatches.length);
+        } catch (err) {
+            console.error('Error fetching activities:', err);
+            setError(err.message || 'Failed to load activities');
+        } finally {
+            setActivitiesLoading(false);
+        }
+    }, []);
 
   // Load recommendations and activities when user is available
     useEffect(() => {
@@ -483,17 +508,28 @@ const MatchCard = ({ match }) => {
     };
     const handleConnectClick = async () => {
         try {
-            // Gọi API để tạo hoặc lấy conversation
-            const conversationResponse = await createOrGetConversationApi(match.userId);
-            if (conversationResponse && conversationResponse.data && conversationResponse.data.conversation) {
-                // Điều hướng đến giao diện tin nhắn
-                navigate(`/messages/${conversationResponse.data.conversation._id}`);
+            // Gọi API để tạo hoặc lấy match
+            const matchResponse = await createOrGetMatchApi(match.userId);
+            console.log(matchResponse.match);
+
+            if (matchResponse?.data?.match) {
+                toast.success(`You are now matched with ${match.status}`);
+
+                // Gọi API để tạo hoặc lấy conversation
+                const conversationResponse = await createOrGetConversationApi(match.userId);
+                if (conversationResponse?.data?.conversation) {
+                    navigate(`/messages/${conversationResponse.data.conversation._id}`); // Điều hướng đến giao diện tin nhắn
+                } else {
+                    throw new Error('Failed to create or fetch conversation.');
+                }
             } else {
-                throw new Error('Failed to fetch or create conversation');
+                throw new Error('Failed to create or fetch match.');
             }
         } catch (error) {
-            console.error('Error creating or fetching conversation:', error);
+            console.error('Error in handleConnectClick:', error);
+            toast.error(error.message || 'Error while connecting. Please try again.');
         }
+       
     };
     return (
         <div className="bg-white rounded-2xl shadow-md overflow-hidden hover:shadow-lg transition transform hover:-translate-y-2">
