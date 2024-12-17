@@ -4,7 +4,7 @@ const GoogleLoginButton = () => {
   const handleGoogleLogin = () => {
     // Điều hướng tới endpoint của backend
     const backendUrl = process.env.REACT_APP_BACKEND_URL || "http://localhost:5000";
-    window.location.href = `${backendUrl}/api/v1/auth/google`;
+window.location.href = `${backendUrl}/api/v1/auth/google`.replace(/([^:]\/)\/+/g, "$1");
   };
 
   return (
