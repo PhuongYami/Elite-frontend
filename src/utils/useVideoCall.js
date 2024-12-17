@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import socket from '../utils/socket'; // Đảm bảo file socket.js đã được cấu hình
+import socket from './socket'; // Đảm bảo file socket.js đã được cấu hình
 
 const useVideoCall = (conversationId) =>
 {
@@ -27,7 +27,18 @@ const useVideoCall = (conversationId) =>
         try
         {
             // Lấy video và audio từ user
-            const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+            const localStream = await navigator.mediaDevices.getUserMedia(
+                {
+                    video: {
+                        width: { ideal: 1920 }, // Chất lượng HD (1280x720)
+                        height: { ideal: 1080 }
+                    },
+                    audio: {
+                        echoCancellation: true, // Giảm tiếng vọng
+                        noiseSuppression: true, // Giảm nhiễu
+                        autoGainControl: true,  // Tự động cân chỉnh âm lượng
+                    },
+                });
             localVideoRef.current.srcObject = localStream;
 
             // Tạo PeerConnection

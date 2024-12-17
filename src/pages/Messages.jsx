@@ -323,7 +323,7 @@ const Messages = () => {
                             >
                                 <ArrowLeft />
                             </button>
-                            {renderChatHeader(conversations, selectedConversationId, userId,handleStartVideoCall)}
+                            {renderChatHeader(conversations, selectedConversationId, userId, true, handleStartVideoCall)}
                         </div>
 
                         {/* Desktop Header */}
