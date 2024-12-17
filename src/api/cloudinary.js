@@ -3,12 +3,12 @@ export const uploadToCloudinary = async (file) =>
 {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('upload_preset', 'your_upload_preset'); // Thay bằng upload preset của bạn
-    formData.append('cloud_name', 'your_cloud_name'); // Thay bằng cloud name của bạn
+    formData.append('upload_preset', process.env.REACT_APP_CLOUDINARY_UPLOAD_PRESET); // Thay bằng upload preset của bạn
+    formData.append('cloud_name', process.env.REACT_APP_CLOUDINARY_CLOUD_NAME); // Thay bằng cloud name của bạn
 
     try
     {
-        const response = await fetch(`https://api.cloudinary.com/v1_1/your_cloud_name/image/upload`, {
+        const response = await fetch(`https://api.cloudinary.com/v1_1/${ process.env.REACT_APP_CLOUDINARY_CLOUD_NAME }/image/upload`, {
             method: 'POST',
             body: formData,
         });
