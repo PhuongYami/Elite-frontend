@@ -15,7 +15,7 @@ const SplashScreen = () => {
         <div className="animate-pulse">
           <img 
             src="/logo.svg"
-            alt="ELITEpaire Logo" 
+            alt="ELITE Logo" 
            className="mx-auto h-80 w-80 mb-4 animate-pulse"
           />
         </div>
