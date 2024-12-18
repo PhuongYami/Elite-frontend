@@ -1,15 +1,53 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import socket from './socket';
+import 'webrtc-adapter';
 
 const useVideoCall = (conversationId) =>
 {
     const localVideoRef = useRef(null);
     const remoteVideoRef = useRef(null);
     const peerConnection = useRef(null);
+    const [callStatus, setCallStatus] = useState('idle');
 
+    // Kiểm tra hỗ trợ WebRTC
+    const checkWebRTCSupport = () =>
+    {
+        const RTCPeer = window.RTCPeerConnection ||
+            window.mozRTCPeerConnection ||
+            window.webkitRTCPeerConnection;
+
+        if (!RTCPeer)
+        {
+            console.error('WebRTC không được hỗ trợ trên trình duyệt này');
+            return false;
+        }
+
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia)
+        {
+            console.error('Không thể truy cập camera và micro');
+            return false;
+        }
+
+        return true;
+    };
+
+    // Cấu hình STUN/TURN servers
+    const getICEServers = () => [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' },
+        { urls: 'stun:stun2.l.google.com:19302' },
+        // Bạn có thể thêm TURN servers ở đây nếu cần
+    ];
+
+    // Lắng nghe các sự kiện từ socket
     useEffect(() =>
     {
-        // Listen to signaling events
+        if (!socket)
+        {
+            console.error('Socket không được khởi tạo');
+            return;
+        }
+
         socket.on('offer', handleReceiveOffer);
         socket.on('answer', handleReceiveAnswer);
         socket.on('iceCandidate', handleReceiveICECandidate);
@@ -22,135 +60,174 @@ const useVideoCall = (conversationId) =>
         };
     }, [conversationId]);
 
+    // Bắt đầu cuộc gọi video
     const startVideoCall = async () =>
     {
+        if (!checkWebRTCSupport())
+        {
+            setCallStatus('error');
+            return;
+        }
+
         try
         {
+            setCallStatus('connecting');
+            const PeerConnection = window.RTCPeerConnection ||
+                window.mozRTCPeerConnection ||
+                window.webkitRTCPeerConnection;
+
+            // Lấy luồng media local
             const localStream = await navigator.mediaDevices.getUserMedia({
-                video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
-                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+                video: {
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 },
+                    facingMode: 'user'
+                },
+                audio: {
+                    echoCancellation: true,
+                    noiseSuppression: true,
+                    autoGainControl: true
+                },
             });
 
-            localVideoRef.current.srcObject = localStream;
+            // Hiển thị video local
+            if (localVideoRef.current)
+            {
+                localVideoRef.current.srcObject = localStream;
+            }
 
-            // Create PeerConnection
-            peerConnection.current = new RTCPeerConnection({
-                iceServers:
-                    [
-                        { urls: 'stun:stun.l.google.com:19302' },
-                        { urls: 'stun:stun1.l.google.com:19302' },
-                        { urls: 'stun:stun2.l.google.com:19302' },
-                    ],
+            // Tạo peer connection
+            peerConnection.current = new PeerConnection({
+                iceServers: getICEServers(),
+                sdpSemantics: 'unified-plan'
             });
 
-            // Add local stream tracks
+            // Thêm track local vào peer connection
             localStream.getTracks().forEach((track) =>
             {
                 peerConnection.current.addTrack(track, localStream);
             });
 
-            // Set up remote track listener
+            // Xử lý track từ remote
             peerConnection.current.ontrack = (event) =>
             {
-                remoteVideoRef.current.srcObject = event.streams[0];
+                if (remoteVideoRef.current)
+                {
+                    remoteVideoRef.current.srcObject = event.streams[0];
+                }
+                setCallStatus('connected');
             };
 
-            // Handle ICE candidates
+            // Xử lý ICE candidate
             peerConnection.current.onicecandidate = (event) =>
             {
                 if (event.candidate)
                 {
-                    socket.emit('iceCandidate', { conversationId, candidate: event.candidate });
+                    socket.emit('iceCandidate', {
+                        conversationId,
+                        candidate: event.candidate
+                    });
                 }
             };
 
-            // Create and send offer
-            const offer = await peerConnection.current.createOffer();
+            // Tạo và gửi offer
+            const offer = await peerConnection.current.createOffer({
+                offerToReceiveAudio: true,
+                offerToReceiveVideo: true
+            });
+
             await peerConnection.current.setLocalDescription(offer);
             socket.emit('offer', { conversationId, offer });
+
         } catch (error)
         {
-            console.error('Error starting video call:', error);
+            console.error('Lỗi bắt đầu video call:', error);
+            setCallStatus('error');
+
+            // Xử lý các lỗi cụ thể
+            if (error.name === 'NotAllowedError')
+            {
+                alert('Vui lòng cấp quyền truy cập camera và micro');
+            } else if (error.name === 'NotFoundError')
+            {
+                alert('Không tìm thấy camera hoặc micro');
+            }
         }
     };
 
+    // Xử lý offer từ phía bên kia
     const handleReceiveOffer = async ({ offer }) =>
     {
-        if (!peerConnection.current)
-        {
-            peerConnection.current = new RTCPeerConnection({
-                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
-            });
-        }
+        if (!checkWebRTCSupport()) return;
 
-        if (peerConnection.current.signalingState !== 'stable')
-        {
-            console.warn('Received offer in wrong state:', peerConnection.current.signalingState);
-            return;
-        }
+        const PeerConnection = window.RTCPeerConnection ||
+            window.mozRTCPeerConnection ||
+            window.webkitRTCPeerConnection;
 
         try
         {
-            await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
-            const answer = await peerConnection.current.createAnswer();
-            await peerConnection.current.setLocalDescription(answer);
-            socket.emit('answer', { conversationId, answer });
-        } catch (error)
-        {
-            console.error('Error handling offer:', error);
-        }
-    };
+            setCallStatus('connecting');
 
-    const handleReceiveAnswer = async ({ answer }) =>
-    {
-        if (!peerConnection.current)
-        {
-            console.warn('PeerConnection not initialized when receiving answer');
-            return;
-        }
-
-        if (peerConnection.current.signalingState !== 'have-local-offer')
-        {
-            // console.warn('Received answer in wrong state:', peerConnection.current.signalingState);
-            // return;
-            if (peerConnection.current.signalingState === 'stable')
+            if (!peerConnection.current)
             {
-                console.warn('Resetting peer connection');
-                peerConnection.current.close();
-                peerConnection.current = null;
-
-                // Reinitialize connection
-                await startVideoCall();
-                return;
+                peerConnection.current = new PeerConnection({
+                    iceServers: getICEServers(),
+                    sdpSemantics: 'unified-plan'
+                });
             }
 
-            console.warn(`Unexpected signaling state: ${ peerConnection.current.signalingState }`);
-            return;
-        }
+            await peerConnection.current.setRemoteDescription(
+                new RTCSessionDescription(offer)
+            );
 
-        try
-        {
-            await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
+            const answer = await peerConnection.current.createAnswer();
+            await peerConnection.current.setLocalDescription(answer);
+
+            socket.emit('answer', { conversationId, answer });
+
         } catch (error)
         {
-            console.error('Error handling answer:', error);
+            console.error('Lỗi xử lý offer:', error);
+            setCallStatus('error');
         }
     };
 
+    // Xử lý answer từ phía bên kia
+    const handleReceiveAnswer = async ({ answer }) =>
+    {
+        if (!peerConnection.current) return;
+
+        try
+        {
+            await peerConnection.current.setRemoteDescription(
+                new RTCSessionDescription(answer)
+            );
+            setCallStatus('connected');
+        } catch (error)
+        {
+            console.error('Lỗi xử lý answer:', error);
+            setCallStatus('error');
+        }
+    };
+
+    // Xử lý ICE candidate
     const handleReceiveICECandidate = async ({ candidate }) =>
     {
         if (peerConnection.current)
         {
             try
             {
-                await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+                await peerConnection.current.addIceCandidate(
+                    new RTCIceCandidate(candidate)
+                );
             } catch (error)
             {
-                console.error('Error adding ICE candidate:', error);
+                console.error('Lỗi thêm ICE candidate:', error);
             }
         }
     };
 
+    // Kết thúc cuộc gọi
     const endVideoCall = () =>
     {
         if (peerConnection.current)
@@ -158,11 +235,33 @@ const useVideoCall = (conversationId) =>
             peerConnection.current.close();
             peerConnection.current = null;
         }
-        if (localVideoRef.current) localVideoRef.current.srcObject = null;
-        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
+
+        if (localVideoRef.current)
+        {
+            const localStream = localVideoRef.current.srcObject;
+            if (localStream)
+            {
+                localStream.getTracks().forEach(track => track.stop());
+                localVideoRef.current.srcObject = null;
+            }
+        }
+
+        if (remoteVideoRef.current)
+        {
+            remoteVideoRef.current.srcObject = null;
+        }
+
+        setCallStatus('idle');
+        socket.emit('endCall', { conversationId });
     };
 
-    return { localVideoRef, remoteVideoRef, startVideoCall, endVideoCall };
+    return {
+        localVideoRef,
+        remoteVideoRef,
+        startVideoCall,
+        endVideoCall,
+        callStatus
+    };
 };
 
 export default useVideoCall;
