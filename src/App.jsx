@@ -8,6 +8,22 @@ import { refreshAccessToken, fetchCurrentUser } from "./features/auth/authSlice"
 import Navbar from "./components/Navbar";
 import allRoutes from "./routes";
 
+const SplashScreen = () => {
+  return (
+    <div className="fixed inset-0 flex items-center justify-center bg-white z-[9999]">
+      <div className="text-center">
+        <div className="animate-pulse">
+          <img 
+            src="/logo.svg"
+            alt="ELITEpaire Logo" 
+           className="mx-auto h-80 w-80 mb-4 animate-pulse"
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const App = () => {
   const dispatch = useDispatch();
   const [isAuthInitialized, setIsAuthInitialized] = useState(false);
@@ -24,7 +40,10 @@ const App = () => {
       } catch (error) {
         console.error("Failed to initialize authentication:", error);
       } finally {
-        setIsAuthInitialized(true);
+        // Thêm delay để người dùng có thể nhìn thấy splash screen
+        setTimeout(() => {
+          setIsAuthInitialized(true);
+        }, 1500); // Có thể điều chỉnh thời gian
       }
     };
 
@@ -32,7 +51,7 @@ const App = () => {
   }, [dispatch]);
 
   if (!isAuthInitialized) {
-    return <div>Loading...</div>;
+    return <SplashScreen />;
   }
 
   return (

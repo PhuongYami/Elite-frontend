@@ -49,12 +49,17 @@ const Navbar = () => {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex items-center justify-between h-16">
                     {/* Logo */}
-                    <div 
-                        className="text-2xl font-thin text-neutral-800 tracking-wider cursor-pointer"
-                        onClick={() => navigate('/')}
-                    >
-                        ELITEpaire
-                    </div>
+                <div 
+                    className="flex items-center space-x-2 text-2xl font-thin text-neutral-800 tracking-wider cursor-pointer"
+                    onClick={() => navigate('/')}
+                >
+                    <img 
+                        src="/elite-logo.png" // hoặc logo.png
+                        alt="ELITEpaire Logo" 
+                        className="h-8 w-8" // Điều chỉnh kích thước phù hợp
+                    />
+                    <span>ELITEpaire</span>
+                </div>
 
                     {/* Navigation Links for Desktop */}
                     {isAuthenticated && (
