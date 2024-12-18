@@ -2,7 +2,7 @@ import React from 'react';
 import { MapPin } from 'lucide-react';
 
 const ProfileCard = ({ profile, onPhotoClick  }) => {
-    const avatarUrl = profile?.photos[0].url|| 'https://picsum.photos/600/800/';
+    const avatarUrl = profile?.photos?.[0]?.url || 'https://picsum.photos/600/800/';
     return (
         <div className="relative">
             <img
