@@ -124,7 +124,7 @@ const useVideoCall = (conversationId) =>
                 return;
             }
 
-            console.warn(`Unexpected signaling state: ${ currentState }`);
+            console.warn(`Unexpected signaling state: ${ peerConnection.current.signalingState }`);
             return;
         }
 
