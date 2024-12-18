@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import socket from './socket'; // Đảm bảo file socket.js đã được cấu hình
+import socket from './socket';
 
 const useVideoCall = (conversationId) =>
 {
@@ -9,7 +9,7 @@ const useVideoCall = (conversationId) =>
 
     useEffect(() =>
     {
-        // Lắng nghe sự kiện từ Socket.IO
+        // Listen to signaling events
         socket.on('offer', handleReceiveOffer);
         socket.on('answer', handleReceiveAnswer);
         socket.on('iceCandidate', handleReceiveICECandidate);
@@ -26,35 +26,36 @@ const useVideoCall = (conversationId) =>
     {
         try
         {
-            // Lấy video và audio từ user
-            const localStream = await navigator.mediaDevices.getUserMedia(
-                {
-                    video: {
-                        width: { ideal: 1920 }, // Chất lượng HD (1280x720)
-                        height: { ideal: 1080 }
-                    },
-                    audio: {
-                        echoCancellation: true, // Giảm tiếng vọng
-                        noiseSuppression: true, // Giảm nhiễu
-                        autoGainControl: true,  // Tự động cân chỉnh âm lượng
-                    },
-                });
+            const localStream = await navigator.mediaDevices.getUserMedia({
+                video: { width: { ideal: 1920 }, height: { ideal: 1080 } },
+                audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+            });
+
             localVideoRef.current.srcObject = localStream;
 
-            // Tạo PeerConnection
-            peerConnection.current = new RTCPeerConnection();
+            // Create PeerConnection
+            peerConnection.current = new RTCPeerConnection({
+                iceServers:
+                    [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' },
+                    ],
+            });
+
+            // Add local stream tracks
             localStream.getTracks().forEach((track) =>
             {
                 peerConnection.current.addTrack(track, localStream);
             });
 
-            // Xử lý track từ đối phương
+            // Set up remote track listener
             peerConnection.current.ontrack = (event) =>
             {
                 remoteVideoRef.current.srcObject = event.streams[0];
             };
 
-            // Gửi ICE Candidate qua socket
+            // Handle ICE candidates
             peerConnection.current.onicecandidate = (event) =>
             {
                 if (event.candidate)
@@ -63,7 +64,7 @@ const useVideoCall = (conversationId) =>
                 }
             };
 
-            // Tạo và gửi Offer
+            // Create and send offer
             const offer = await peerConnection.current.createOffer();
             await peerConnection.current.setLocalDescription(offer);
             socket.emit('offer', { conversationId, offer });
@@ -91,19 +92,14 @@ const useVideoCall = (conversationId) =>
         try
         {
             await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
-            console.log('Offer set successfully:', offer);
-
             const answer = await peerConnection.current.createAnswer();
             await peerConnection.current.setLocalDescription(answer);
-            console.log('Answer created and sent:', answer);
-
             socket.emit('answer', { conversationId, answer });
         } catch (error)
         {
             console.error('Error handling offer:', error);
         }
     };
-
 
     const handleReceiveAnswer = async ({ answer }) =>
     {
@@ -115,24 +111,43 @@ const useVideoCall = (conversationId) =>
 
         if (peerConnection.current.signalingState !== 'have-local-offer')
         {
-            console.warn('Received answer in wrong state:', peerConnection.current.signalingState);
+            // console.warn('Received answer in wrong state:', peerConnection.current.signalingState);
+            // return;
+            if (peerConnection.current.signalingState === 'stable')
+            {
+                console.warn('Resetting peer connection');
+                peerConnection.current.close();
+                peerConnection.current = null;
+
+                // Reinitialize connection
+                await startVideoCall();
+                return;
+            }
+
+            console.warn(`Unexpected signaling state: ${ currentState }`);
             return;
         }
 
         try
         {
             await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
-            console.log('Answer set successfully:', answer);
         } catch (error)
         {
             console.error('Error handling answer:', error);
         }
     };
+
     const handleReceiveICECandidate = async ({ candidate }) =>
     {
         if (peerConnection.current)
         {
-            await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+            try
+            {
+                await peerConnection.current.addIceCandidate(new RTCIceCandidate(candidate));
+            } catch (error)
+            {
+                console.error('Error adding ICE candidate:', error);
+            }
         }
     };
 
@@ -143,14 +158,8 @@ const useVideoCall = (conversationId) =>
             peerConnection.current.close();
             peerConnection.current = null;
         }
-        if (localVideoRef.current)
-        {
-            localVideoRef.current.srcObject = null;
-        }
-        if (remoteVideoRef.current)
-        {
-            remoteVideoRef.current.srcObject = null;
-        }
+        if (localVideoRef.current) localVideoRef.current.srcObject = null;
+        if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null;
     };
 
     return { localVideoRef, remoteVideoRef, startVideoCall, endVideoCall };
