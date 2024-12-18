@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import socket from './socket';
+import iceServerService from '../services/iceServerService';
 import 'webrtc-adapter';
 
 const useVideoCall = (conversationId) =>
@@ -8,7 +9,25 @@ const useVideoCall = (conversationId) =>
     const remoteVideoRef = useRef(null);
     const peerConnection = useRef(null);
     const [callStatus, setCallStatus] = useState('idle');
+    const [iceServers, setIceServers] = useState([]);
 
+    // Fetch ICE Servers từ backend khi khởi tạo hook
+    useEffect(() =>
+    {
+        const fetchICEServers = async () =>
+        {
+            try
+            {
+                const servers = await iceServerService.getICEServers();
+                setIceServers(servers);
+            } catch (error)
+            {
+                console.error('Không thể lấy ICE Servers:', error);
+            }
+        };
+
+        fetchICEServers();
+    }, []);
     // Kiểm tra hỗ trợ WebRTC
     const checkWebRTCSupport = () =>
     {
@@ -32,12 +51,12 @@ const useVideoCall = (conversationId) =>
     };
 
     // Cấu hình STUN/TURN servers
-    const getICEServers = () => [
-        { urls: 'stun:stun.l.google.com:19302' },
-        { urls: 'stun:stun1.l.google.com:19302' },
-        { urls: 'stun:stun2.l.google.com:19302' },
-        // Bạn có thể thêm TURN servers ở đây nếu cần
-    ];
+    // const getICEServers = () => [
+    //     { urls: 'stun:stun.l.google.com:19302' },
+    //     { urls: 'stun:stun1.l.google.com:19302' },
+    //     { urls: 'stun:stun2.l.google.com:19302' },
+    //     // Bạn có thể thêm TURN servers ở đây nếu cần
+    // ];
 
     // Lắng nghe các sự kiện từ socket
     useEffect(() =>
@@ -65,6 +84,12 @@ const useVideoCall = (conversationId) =>
     {
         if (!checkWebRTCSupport())
         {
+            setCallStatus('error');
+            return;
+        }
+        if (iceServers.length === 0)
+        {
+            console.error('Chưa cấu hình ICE Servers');
             setCallStatus('error');
             return;
         }
@@ -97,10 +122,7 @@ const useVideoCall = (conversationId) =>
             }
 
             // Tạo peer connection
-            peerConnection.current = new PeerConnection({
-                iceServers: getICEServers(),
-                sdpSemantics: 'unified-plan'
-            });
+            peerConnection.current = new PeerConnection({ iceServers, sdpSemantics: 'unified-plan' });
 
             // Thêm track local vào peer connection
             localStream.getTracks().forEach((track) =>
@@ -170,10 +192,7 @@ const useVideoCall = (conversationId) =>
 
             if (!peerConnection.current)
             {
-                peerConnection.current = new PeerConnection({
-                    iceServers: getICEServers(),
-                    sdpSemantics: 'unified-plan'
-                });
+                peerConnection.current = new PeerConnection({ iceServers, sdpSemantics: 'unified-plan' });
             }
 
             await peerConnection.current.setRemoteDescription(
