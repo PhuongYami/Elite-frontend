@@ -77,24 +77,57 @@ const useVideoCall = (conversationId) =>
     {
         if (!peerConnection.current)
         {
-            peerConnection.current = new RTCPeerConnection();
+            peerConnection.current = new RTCPeerConnection({
+                iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+            });
         }
 
-        // Nhận Offer và gửi Answer
-        await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
-        const answer = await peerConnection.current.createAnswer();
-        await peerConnection.current.setLocalDescription(answer);
-        socket.emit('answer', { conversationId, answer });
+        if (peerConnection.current.signalingState !== 'stable')
+        {
+            console.warn('Received offer in wrong state:', peerConnection.current.signalingState);
+            return;
+        }
+
+        try
+        {
+            await peerConnection.current.setRemoteDescription(new RTCSessionDescription(offer));
+            console.log('Offer set successfully:', offer);
+
+            const answer = await peerConnection.current.createAnswer();
+            await peerConnection.current.setLocalDescription(answer);
+            console.log('Answer created and sent:', answer);
+
+            socket.emit('answer', { conversationId, answer });
+        } catch (error)
+        {
+            console.error('Error handling offer:', error);
+        }
     };
+
 
     const handleReceiveAnswer = async ({ answer }) =>
     {
-        if (peerConnection.current)
+        if (!peerConnection.current)
+        {
+            console.warn('PeerConnection not initialized when receiving answer');
+            return;
+        }
+
+        if (peerConnection.current.signalingState !== 'have-local-offer')
+        {
+            console.warn('Received answer in wrong state:', peerConnection.current.signalingState);
+            return;
+        }
+
+        try
         {
             await peerConnection.current.setRemoteDescription(new RTCSessionDescription(answer));
+            console.log('Answer set successfully:', answer);
+        } catch (error)
+        {
+            console.error('Error handling answer:', error);
         }
     };
-
     const handleReceiveICECandidate = async ({ candidate }) =>
     {
         if (peerConnection.current)
