@@ -1,6 +1,8 @@
 import axios from 'axios';
 
-const ICE_SERVER_API_URL = `http://localhost:5000/api/iceServers`;
+const ICE_SERVER_API_URL = process.env.REACT_APP_BACKEND_URL
+    ? `${ process.env.REACT_APP_BACKEND_URL }/api/iceServers`
+    : 'http://localhost:5000/api/iceServers';
 
 const getICEServers = async () =>
 {
