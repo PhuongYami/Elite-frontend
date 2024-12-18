@@ -58,7 +58,7 @@ const Navbar = () => {
                         alt="ELITEpaire Logo" 
                         className="h-8 w-8" // Điều chỉnh kích thước phù hợp
                     />
-                    <span>ELITEpaire</span>
+                    <span>ELITE</span>
                 </div>
 
                     {/* Navigation Links for Desktop */}

@@ -54,7 +54,7 @@ const Home = () => {
                 <div className="max-w-7xl mx-auto px-8">
                     <div className="text-center mb-12">
                         <h2 className="text-4xl font-thin text-neutral-800 mb-4">
-                            Why Elitepaire
+                            Why Elite?
                         </h2>
                         <p className="text-neutral-600 max-w-2xl mx-auto">
                             A premium social platform designed for discerning individuals seeking meaningful connections.
